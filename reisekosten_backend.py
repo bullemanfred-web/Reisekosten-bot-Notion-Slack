@@ -80,7 +80,7 @@ logger = logging.getLogger(__name__)
 #        return build("drive", "v3", credentials=credentials)
 #    return None
 #
-#drive_client = get_drive_client()
+#drive_client = None  # Disabled - no credentials
 
 # ============================================================================
 # NOTION CLIENT
