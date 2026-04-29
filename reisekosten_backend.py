@@ -70,17 +70,17 @@ logger = logging.getLogger(__name__)
 # GOOGLE DRIVE CLIENT
 # ============================================================================
 
-def get_drive_client():
-    """Initialisiert Google Drive Client"""
-    if GOOGLE_APPLICATION_CREDENTIALS:
-        credentials = Credentials.from_service_account_file(
-            GOOGLE_APPLICATION_CREDENTIALS,
-            scopes=["https://www.googleapis.com/auth/drive"]
-        )
-        return build("drive", "v3", credentials=credentials)
-    return None
-
-drive_client = get_drive_client()
+#def get_drive_client():
+#    """Initialisiert Google Drive Client"""
+#    if GOOGLE_APPLICATION_CREDENTIALS:
+#        credentials = Credentials.from_service_account_file(
+#            GOOGLE_APPLICATION_CREDENTIALS,
+#            scopes=["https://www.googleapis.com/auth/drive"]
+#        )
+#        return build("drive", "v3", credentials=credentials)
+#    return None
+#
+#drive_client = get_drive_client()
 
 # ============================================================================
 # NOTION CLIENT
