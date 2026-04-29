@@ -77,7 +77,7 @@ def get_drive_client():
             GOOGLE_APPLICATION_CREDENTIALS,
             scopes=["https://www.googleapis.com/auth/drive"]
         )
-        return build("drive", "v3"(credentials=credentials)
+        return build("drive", "v3", credentials=credentials)
     return None
 
 drive_client = get_drive_client()
