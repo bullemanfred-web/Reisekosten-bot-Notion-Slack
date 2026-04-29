@@ -4,5 +4,5 @@ requests==2.31.0
 gunicorn==21.2.0
 notion-client==2.2.1
 google-auth==2.27.0
-google-cloud-drive==1.10.0
+
 google-api-python-client==2.108.0
