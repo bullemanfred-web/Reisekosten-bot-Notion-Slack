@@ -26,7 +26,7 @@ import hmac
 
 from flask import Flask, request, jsonify
 from google.oauth2.service_account import Credentials
-from google.cloud import drive_v3
+from googleapiclient.discovery import build
 from slack_sdk import WebClient as SlackClient
 from slack_sdk.errors import SlackApiError
 import requests
@@ -77,7 +77,7 @@ def get_drive_client():
             GOOGLE_APPLICATION_CREDENTIALS,
             scopes=["https://www.googleapis.com/auth/drive"]
         )
-        return drive_v3.DriveService(credentials=credentials)
+        return build("drive", "v3"(credentials=credentials)
     return None
 
 drive_client = get_drive_client()
