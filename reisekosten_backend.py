@@ -186,7 +186,7 @@ def check_freigabe_requests_async():
             database_id=REISEKOSTEN_FREIGABE_DB_ID,
             filter={
                 "property": "Status",
-                "select": {
+                "status": {
                     "is_not_empty": True
                 }
             }
@@ -200,7 +200,9 @@ def check_freigabe_requests_async():
 
             try:
                 # Extrahiere Properties
-                status = properties.get('Status', {}).get('select', {}).get('name', '')
+                # Status: try both 'status' type (native Notion status) and 'select' type (fallback)
+                status_prop = properties.get('Status', {})
+                status = status_prop.get('status', {}).get('name', '') or status_prop.get('select', {}).get('name', '')
                 # E-Mail kommt aus einer Formel, daher formula.string auslesen
                 email = properties.get('E-Mail', {}).get('formula', {}).get('string', '')
                 antrag_name = properties.get('Antrag', {}).get('title', [{}])[0].get('text', {}).get('content', 'Unbekannt')
@@ -303,7 +305,9 @@ def handle_notion_webhook():
 
             try:
                 # Extrahiere Properties
-                status = properties.get('Status', {}).get('select', {}).get('name', '')
+                # Status: try both 'status' type (native Notion status) and 'select' type (fallback)
+                status_prop = properties.get('Status', {})
+                status = status_prop.get('status', {}).get('name', '') or status_prop.get('select', {}).get('name', '')
                 # E-Mail kommt aus einer Formel, daher formula.string auslesen
                 email = properties.get('E-Mail', {}).get('formula', {}).get('string', '')
                 antrag_name = properties.get('Antrag', {}).get('title', [{}])[0].get('text', {}).get('content', '')
