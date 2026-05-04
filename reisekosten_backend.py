@@ -114,11 +114,14 @@ def check_freigabe_requests_async():
             else:
                 reported_requests[page_id]["status"] = status
 
-            if is_new and antrag_name:
+            # 1. CHANNEL NOTIFICATION nur für neue Anträge (einmalig)
+            if is_new and antrag_name and not reported_requests[page_id].get("notified_channel"):
                 channel_msg = f"📝 *Neuer Antrag in Reisekosten-Freigabe*\n{antrag_name}\n💶 {betrag} EUR | 🗺️ {reise_anlass}\n🔗 https://www.notion.so/{page_id}"
                 if send_slack_channel_message(channel_msg):
                     reported_requests[page_id]["notified_channel"] = True
+                    logger.info(f"✅ Channel Notification: {antrag_name}")
 
+            # 2. DM für Status-Änderungen (Freigegeben/Abgelehnt)
             if (is_status_change or is_new) and status and email:
                 if status == "Freigegeben" and not reported_requests[page_id].get("notified_dm"):
                     message = f"✅ Dein Reisekostenantrag *{antrag_name}* ({vorgang_id}) wurde **freigegeben**.\n💶 {betrag} EUR\n🔗 https://www.notion.so/{page_id}"
