@@ -201,7 +201,8 @@ def check_freigabe_requests_async():
             try:
                 # Extrahiere Properties
                 status = properties.get('Status', {}).get('select', {}).get('name', '')
-                email = properties.get('E-Mail', {}).get('email', '')
+                # E-Mail kommt aus einer Formel, daher formula.string auslesen
+                email = properties.get('E-Mail', {}).get('formula', {}).get('string', '')
                 antrag_name = properties.get('Antrag', {}).get('title', [{}])[0].get('text', {}).get('content', 'Unbekannt')
                 vorgangs_id = properties.get('Vorgangs-ID', {}).get('rich_text', [{}])[0].get('text', {}).get('content', '')
                 betrag = properties.get('erwarteter Betrag (EUR)', {}).get('number', 'N/A')
@@ -303,7 +304,8 @@ def handle_notion_webhook():
             try:
                 # Extrahiere Properties
                 status = properties.get('Status', {}).get('select', {}).get('name', '')
-                email = properties.get('E-Mail', {}).get('email', '')
+                # E-Mail kommt aus einer Formel, daher formula.string auslesen
+                email = properties.get('E-Mail', {}).get('formula', {}).get('string', '')
                 antrag_name = properties.get('Antrag', {}).get('title', [{}])[0].get('text', {}).get('content', '')
                 vorgangs_id = properties.get('Vorgangs-ID', {}).get('rich_text', [{}])[0].get('text', {}).get('content', '')
                 betrag = properties.get('erwarteter Betrag (EUR)', {}).get('number', 'N/A')
