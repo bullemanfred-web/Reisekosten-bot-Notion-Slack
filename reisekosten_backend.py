@@ -89,6 +89,12 @@ def load_reported_requests() -> Dict[str, str]:
             content = blob.download_as_string()
             data = json.loads(content)
             reported_requests = data.get("reported_requests", {})
+
+            # Sicherheit: stelle sicher, dass es ein Dict ist (nicht eine alte Liste)
+            if not isinstance(reported_requests, dict):
+                logger.warning(f"⚠️ Cloud Storage hat keine Dict, sondern {type(reported_requests)}. Konvertiere zu Dict.")
+                reported_requests = {}
+
             logger.info(f"✅ {len(reported_requests)} Anfragen aus Cloud Storage geladen")
             return reported_requests
         else:
