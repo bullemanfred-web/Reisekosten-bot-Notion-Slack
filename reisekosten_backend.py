@@ -243,6 +243,10 @@ def check_freigabe_requests_async():
     logger.info("NOTION API POLLING GESTARTET")
     logger.info("=" * 80)
 
+    # Lade aktuelle reported_requests aus Cloud Storage
+    reported_requests = load_reported_requests()
+    logger.info(f"Geladene reported_requests: {len(reported_requests)} Einträge")
+
     try:
         if not notion_client:
             msg = "Notion Client nicht verfügbar"
