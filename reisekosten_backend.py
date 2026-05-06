@@ -365,8 +365,15 @@ def check_all_endpoint():
 def handle_notion_webhook():
     """Webhook Handler für neue Reisekostenantrag-Requests"""
     try:
+        # Debug: Logge RAW Request
+        raw_data = request.get_data(as_text=True)
+        logger.info(f"Raw Request Data: {raw_data}")
+        logger.info(f"Content-Type: {request.content_type}")
+
         payload = request.get_json()
-        webhook_type = payload.get('type')
+        logger.info(f"Parsed JSON: {json.dumps(payload, indent=2) if payload else 'NULL'}")
+
+        webhook_type = payload.get('type') if payload else None
 
         # Debug: Logge komplette Payload für Verification
         if webhook_type == "verification":
@@ -377,7 +384,7 @@ def handle_notion_webhook():
             logger.info(f"Headers: {dict(request.headers)}")
             logger.info("=" * 80)
 
-        logger.info(f"Notion Webhook: {webhook_type}")
+        logger.info(f"Notion Webhook Type: {webhook_type}")
 
         # Notion Verification Challenge
         if webhook_type == "ping":
