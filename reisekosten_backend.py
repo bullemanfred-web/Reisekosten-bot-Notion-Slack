@@ -367,6 +367,16 @@ def handle_notion_webhook():
     try:
         payload = request.get_json()
         webhook_type = payload.get('type')
+
+        # Debug: Logge komplette Payload für Verification
+        if webhook_type == "verification":
+            logger.info("=" * 80)
+            logger.info("NOTION WEBHOOK VERIFICATION REQUEST")
+            logger.info("=" * 80)
+            logger.info(f"Full Payload: {json.dumps(payload, indent=2)}")
+            logger.info(f"Headers: {dict(request.headers)}")
+            logger.info("=" * 80)
+
         logger.info(f"Notion Webhook: {webhook_type}")
 
         # Notion Verification Challenge
@@ -377,8 +387,18 @@ def handle_notion_webhook():
         # Notion Webhook Verification (Challenge-Response)
         if webhook_type == "verification":
             challenge = payload.get('challenge')
-            logger.info(f"✅ Verification Challenge empfangen: {challenge[:20]}...")
-            return jsonify({"challenge": challenge}), 200
+            if not challenge:
+                logger.error("❌ Kein Challenge-Token in Payload gefunden!")
+                logger.error(f"Verfügbare Keys: {list(payload.keys())}")
+                return jsonify({"error": "No challenge token"}), 400
+
+            logger.info(f"✅ Challenge empfangen: {challenge}")
+            response = {
+                "type": "verification",
+                "challenge": challenge
+            }
+            logger.info(f"Sende Response: {json.dumps(response)}")
+            return jsonify(response), 200
 
         # Verarbeite neue/aktualisierte Seiten
         if webhook_type == "page_update":
