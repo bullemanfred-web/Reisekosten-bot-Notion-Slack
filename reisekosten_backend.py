@@ -37,7 +37,7 @@ app = Flask(__name__)
 
 # Logging mit strukturiertem Format
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
@@ -247,6 +247,9 @@ def check_freigabe_requests_async():
     reported_requests = load_reported_requests()
     logger.info(f"Geladene reported_requests: {len(reported_requests)} Einträge")
 
+    # Zähler für neue Anträge
+    new_requests_count = 0
+
     try:
         if not notion_client:
             msg = "Notion Client nicht verfügbar"
@@ -293,6 +296,7 @@ def check_freigabe_requests_async():
 
                 # Verarbeite nur neue Requests mit Status
                 if status and page_id not in reported_requests:
+                    new_requests_count += 1
                     # Neue Anträge: Status = "Eingereicht" → Channel-Nachricht
                     if status == "Eingereicht" and email:
                         channel_msg = f"📝 *Reisekostenantrag* zu {vorgangs_id} | Antragsteller:in: {email} | Betrag: {betrag} EUR\n🔗 https://www.notion.so/{page_id}"
@@ -331,7 +335,7 @@ def check_freigabe_requests_async():
 
         last_check_time = datetime.now(timezone.utc).isoformat()
         last_error = None
-        logger.info(f"✅ Polling abgeschlossen. {len(reported_requests)} Anträge gemeldet")
+        logger.info(f"✅ Polling abgeschlossen: {new_requests_count} neue Anträge gefunden, {len(reported_requests)} insgesamt gemeldet")
 
         # Speichere den aktualisierten State in Cloud Storage
         save_reported_requests(reported_requests)
