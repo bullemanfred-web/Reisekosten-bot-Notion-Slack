@@ -9,11 +9,19 @@ import json
 import logging
 import threading
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 
 from flask import Flask, request, jsonify
 from slack_sdk import WebClient as SlackClient
 from slack_sdk.errors import SlackApiError
+
+# Google Cloud Storage
+try:
+    from google.cloud import storage
+    GCS_AVAILABLE = True
+except ImportError:
+    GCS_AVAILABLE = False
+    storage = None
 
 # Notion SDK
 try:
@@ -46,13 +54,72 @@ SLACK_CHANNEL_ID = os.getenv("SLACK_CHANNEL_ID", "C0AKDAY79BP")
 REISEKOSTEN_FREIGABE_DB_ID = "6884ef9fe113402e8a932079a90e85a2"
 REISEKOSTEN_RECHNUNG_DB_ID = "dd3dd27e-a33c-4203-a00e-b70e9c0ae891"
 
+# Cloud Storage
+GCS_BUCKET_NAME = os.getenv("GCS_BUCKET_NAME", "reisekosten-workflow-state")
+GCS_STATE_FILE = "reported_requests.json"
+
 # ============================================================================
 # STATE
 # ============================================================================
 
-reported_requests = set()
+reported_requests: Set[str] = set()
 last_check_time = None
 last_error = None
+
+# ============================================================================
+# CLOUD STORAGE FUNCTIONS
+# ============================================================================
+
+def load_reported_requests() -> Set[str]:
+    """Lade gemeldete Anfragen aus Cloud Storage"""
+    global reported_requests
+
+    if not GCS_AVAILABLE:
+        logger.warning("Google Cloud Storage nicht verfügbar, verwende RAM-Only State")
+        return set()
+
+    try:
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(GCS_BUCKET_NAME)
+        blob = bucket.blob(GCS_STATE_FILE)
+
+        if blob.exists():
+            content = blob.download_as_string()
+            data = json.loads(content)
+            reported_requests = set(data.get("reported_requests", []))
+            logger.info(f"✅ {len(reported_requests)} Anfragen aus Cloud Storage geladen")
+            return reported_requests
+        else:
+            logger.info("Keine gespeicherten Anfragen gefunden, starte mit leerer Liste")
+            return set()
+
+    except Exception as e:
+        logger.error(f"Fehler beim Laden aus Cloud Storage: {e}")
+        return set()
+
+def save_reported_requests(reported_set: Set[str]):
+    """Speichere gemeldete Anfragen in Cloud Storage"""
+    if not GCS_AVAILABLE:
+        logger.warning("Google Cloud Storage nicht verfügbar, Speichern übersprungen")
+        return
+
+    try:
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(GCS_BUCKET_NAME)
+        blob = bucket.blob(GCS_STATE_FILE)
+
+        data = {
+            "reported_requests": list(reported_set),
+            "last_updated": datetime.now(timezone.utc).isoformat()
+        }
+        blob.upload_from_string(
+            json.dumps(data, indent=2),
+            content_type="application/json"
+        )
+        logger.info(f"✅ {len(reported_set)} Anfragen in Cloud Storage gespeichert")
+
+    except Exception as e:
+        logger.error(f"Fehler beim Speichern in Cloud Storage: {e}")
 
 # ============================================================================
 # NOTION CLIENT INITIALIZATION
@@ -112,6 +179,9 @@ def get_notion_client():
         return None
 
 notion_client = get_notion_client()
+
+# Lade reported_requests aus Cloud Storage beim Start
+reported_requests = load_reported_requests()
 
 # ============================================================================
 # SLACK CLIENT
@@ -232,6 +302,9 @@ def check_freigabe_requests_async():
         last_check_time = datetime.now(timezone.utc).isoformat()
         last_error = None
         logger.info(f"✅ Polling abgeschlossen. {len(reported_requests)} Anträge gemeldet")
+
+        # Speichere den aktualisierten State in Cloud Storage
+        save_reported_requests(reported_requests)
         logger.info("=" * 80)
 
     except APIResponseError as e:
