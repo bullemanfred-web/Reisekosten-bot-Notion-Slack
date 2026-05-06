@@ -247,6 +247,12 @@ def check_freigabe_requests_async():
 
     # Lade aktuelle reported_requests aus Cloud Storage
     reported_requests = load_reported_requests()
+
+    # Sicherheit: stelle sicher, dass reported_requests ein Dict ist
+    if not isinstance(reported_requests, dict):
+        logger.warning(f"⚠️ reported_requests ist nicht vom Typ Dict, sondern {type(reported_requests)}. Reset zu leerem Dict.")
+        reported_requests = {}
+
     logger.info(f"Geladene reported_requests: {len(reported_requests)} Einträge")
 
     # Zähler für neue Anträge
