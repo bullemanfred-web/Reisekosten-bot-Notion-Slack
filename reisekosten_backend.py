@@ -287,12 +287,16 @@ def check_freigabe_requests_async():
                         message = f"✅ Dein Reisekostenantrag *{antrag_name}* zu {vorgangs_id} wurde **freigegeben**. | Betrag: {betrag} EUR\n🔗 https://www.notion.so/{page_id}"
                         if send_slack_dm(email, message):
                             reported_requests.add(page_id)
+                            # Speichere sofort nach erfolgreichem Versand
+                            save_reported_requests(reported_requests)
                             logger.info(f"✅ Freigabe notifiziert: {antrag_name}")
 
                     elif status == "Abgelehnt":
                         message = f"❌ Dein Reisekostenantrag *{antrag_name}* zu {vorgangs_id} wurde **abgelehnt**.\n🔗 https://www.notion.so/{page_id}"
                         if send_slack_dm(email, message):
                             reported_requests.add(page_id)
+                            # Speichere sofort nach erfolgreichem Versand
+                            save_reported_requests(reported_requests)
                             logger.info(f"✅ Ablehnung notifiziert: {antrag_name}")
 
             except Exception as page_error:
