@@ -366,13 +366,22 @@ def handle_notion_webhook():
     """Webhook Handler für neue Reisekostenantrag-Requests"""
     try:
         payload = request.get_json()
-        logger.info(f"Notion Webhook: {payload.get('type')}")
+        webhook_type = payload.get('type')
+        logger.info(f"Notion Webhook: {webhook_type}")
 
-        if payload.get("type") == "ping":
+        # Notion Verification Challenge
+        if webhook_type == "ping":
+            logger.info("✅ Ping empfangen")
             return jsonify({"success": True}), 200
 
+        # Notion Webhook Verification (Challenge-Response)
+        if webhook_type == "verification":
+            challenge = payload.get('challenge')
+            logger.info(f"✅ Verification Challenge empfangen: {challenge[:20]}...")
+            return jsonify({"challenge": challenge}), 200
+
         # Verarbeite neue/aktualisierte Seiten
-        if payload.get("type") == "page_update":
+        if webhook_type == "page_update":
             page_id = payload.get("page_id", "")
             properties = payload.get("properties", {})
 
