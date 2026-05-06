@@ -282,8 +282,23 @@ def check_freigabe_requests_async():
                 logger.debug(f"Seite {page_id}: Status={status}, Email={email}, Antrag={antrag_name}")
 
                 # Verarbeite nur neue Requests mit Status
-                if status and email and page_id not in reported_requests:
-                    if status == "Freigegeben":
+                if status and page_id not in reported_requests:
+                    # Neue Anträge: Status = "Eingereicht" → Channel-Nachricht
+                    if status == "Eingereicht" and email:
+                        channel_msg = f"📝 *Reisekostenantrag* zu {vorgangs_id} | Antragsteller:in: {email} | Betrag: {betrag} EUR\n🔗 https://www.notion.so/{page_id}"
+                        try:
+                            slack_client.chat_postMessage(
+                                channel=SLACK_CHANNEL_ID,
+                                text=channel_msg
+                            )
+                            reported_requests.add(page_id)
+                            save_reported_requests(reported_requests)
+                            logger.info(f"✅ Neue Antrag notifiziert im Channel: {antrag_name}")
+                        except Exception as slack_err:
+                            logger.error(f"Fehler beim Channel-Post: {slack_err}")
+
+                    # Freigegeben: DM an Antragsteller
+                    elif status == "Freigegeben" and email:
                         message = f"✅ Dein Reisekostenantrag *{antrag_name}* zu {vorgangs_id} wurde **freigegeben**. | Betrag: {betrag} EUR\n🔗 https://www.notion.so/{page_id}"
                         if send_slack_dm(email, message):
                             reported_requests.add(page_id)
@@ -291,7 +306,8 @@ def check_freigabe_requests_async():
                             save_reported_requests(reported_requests)
                             logger.info(f"✅ Freigabe notifiziert: {antrag_name}")
 
-                    elif status == "Abgelehnt":
+                    # Abgelehnt: DM an Antragsteller
+                    elif status == "Abgelehnt" and email:
                         message = f"❌ Dein Reisekostenantrag *{antrag_name}* zu {vorgangs_id} wurde **abgelehnt**.\n🔗 https://www.notion.so/{page_id}"
                         if send_slack_dm(email, message):
                             reported_requests.add(page_id)
