@@ -281,8 +281,9 @@ def check_freigabe_requests_async():
 
                 logger.debug(f"Seite {page_id}: Status={status}, Email={email}, Antrag={antrag_name}")
 
-                # Markiere alle älteren Freigaben/Ablehnungen als bereits berichtet (beim ersten Poll)
-                if status in ["Freigegeben", "Abgelehnt"] and page_id not in reported_requests:
+                # Markiere alle älteren Einträge als bereits berichtet (beim ersten Poll)
+                # Das verhindert Duplikate, wenn die Instanz neustartet
+                if status in ["Eingereicht", "Freigegeben", "Abgelehnt"] and page_id not in reported_requests:
                     reported_requests.add(page_id)
                     logger.debug(f"Markiere als bereits berichtet (älter): {antrag_name}")
 
