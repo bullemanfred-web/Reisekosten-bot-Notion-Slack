@@ -9,7 +9,7 @@ import json
 import logging
 import threading
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional
 
 from flask import Flask, request, jsonify
 from slack_sdk import WebClient as SlackClient
@@ -62,7 +62,9 @@ GCS_STATE_FILE = "reported_requests.json"
 # STATE
 # ============================================================================
 
-reported_requests: Set[str] = set()
+# Dict[page_id] = last_notified_status
+# Trackt den letzten Status, für den wir eine Notification gesendet haben
+reported_requests: Dict[str, str] = {}
 last_check_time = None
 last_error = None
 
@@ -70,13 +72,13 @@ last_error = None
 # CLOUD STORAGE FUNCTIONS
 # ============================================================================
 
-def load_reported_requests() -> Set[str]:
+def load_reported_requests() -> Dict[str, str]:
     """Lade gemeldete Anfragen aus Cloud Storage"""
     global reported_requests
 
     if not GCS_AVAILABLE:
         logger.warning("Google Cloud Storage nicht verfügbar, verwende RAM-Only State")
-        return set()
+        return {}
 
     try:
         storage_client = storage.Client()
@@ -86,18 +88,18 @@ def load_reported_requests() -> Set[str]:
         if blob.exists():
             content = blob.download_as_string()
             data = json.loads(content)
-            reported_requests = set(data.get("reported_requests", []))
+            reported_requests = data.get("reported_requests", {})
             logger.info(f"✅ {len(reported_requests)} Anfragen aus Cloud Storage geladen")
             return reported_requests
         else:
             logger.info("Keine gespeicherten Anfragen gefunden, starte mit leerer Liste")
-            return set()
+            return {}
 
     except Exception as e:
         logger.error(f"Fehler beim Laden aus Cloud Storage: {e}")
-        return set()
+        return {}
 
-def save_reported_requests(reported_set: Set[str]):
+def save_reported_requests(reported_dict: Dict[str, str]):
     """Speichere gemeldete Anfragen in Cloud Storage"""
     if not GCS_AVAILABLE:
         logger.warning("Google Cloud Storage nicht verfügbar, Speichern übersprungen")
@@ -109,14 +111,14 @@ def save_reported_requests(reported_set: Set[str]):
         blob = bucket.blob(GCS_STATE_FILE)
 
         data = {
-            "reported_requests": list(reported_set),
+            "reported_requests": reported_dict,
             "last_updated": datetime.now(timezone.utc).isoformat()
         }
         blob.upload_from_string(
             json.dumps(data, indent=2),
             content_type="application/json"
         )
-        logger.info(f"✅ {len(reported_set)} Anfragen in Cloud Storage gespeichert")
+        logger.info(f"✅ {len(reported_dict)} Anfragen in Cloud Storage gespeichert")
 
     except Exception as e:
         logger.error(f"Fehler beim Speichern in Cloud Storage: {e}")
@@ -288,13 +290,16 @@ def check_freigabe_requests_async():
 
                 logger.debug(f"Seite {page_id}: Status={status}, Email={email}, Antrag={antrag_name}")
 
-                # Verarbeite nur neue Requests mit Status
-                if status and page_id not in reported_requests:
+                # Prüfe: Ist dieser Antrag neu ODER hat der Status sich geändert?
+                last_notified_status = reported_requests.get(page_id)
+
+                if status and status != last_notified_status:
                     new_requests_count += 1
-                    logger.debug(f"✅ Neue Antrag erkannt: {antrag_name} (Status: {status})")
+                    is_new = page_id not in reported_requests
+                    logger.debug(f"✅ Antrag-Update erkannt: {antrag_name} (Status: {status}, War: {last_notified_status or 'neu'})")
 
                     # Neue Anträge: Status = "Eingereicht" → Channel-Nachricht
-                    if status == "Eingereicht" and email:
+                    if status == "Eingereicht" and is_new and email:
                         channel_msg = f"📝 *Reisekostenantrag* zu {vorgangs_id} | Antragsteller:in: {email} | Betrag: {betrag} EUR\n🔗 https://www.notion.so/{page_id}"
                         try:
                             slack_client.chat_postMessage(
@@ -305,26 +310,26 @@ def check_freigabe_requests_async():
                         except Exception as slack_err:
                             logger.error(f"Fehler beim Channel-Post: {slack_err}")
 
-                    # Freigegeben: DM an Antragsteller
+                    # Freigegeben: DM an Antragsteller (egal ob neu oder Status-Update)
                     elif status == "Freigegeben" and email:
                         message = f"✅ Dein Reisekostenantrag *{antrag_name}* zu {vorgangs_id} wurde **freigegeben**. | Betrag: {betrag} EUR\n🔗 https://www.notion.so/{page_id}"
                         if send_slack_dm(email, message):
                             logger.info(f"✅ Freigabe notifiziert: {antrag_name}")
 
-                    # Abgelehnt: DM an Antragsteller
+                    # Abgelehnt: DM an Antragsteller (egal ob neu oder Status-Update)
                     elif status == "Abgelehnt" and email:
                         message = f"❌ Dein Reisekostenantrag *{antrag_name}* zu {vorgangs_id} wurde **abgelehnt**.\n🔗 https://www.notion.so/{page_id}"
                         if send_slack_dm(email, message):
                             logger.info(f"✅ Ablehnung notifiziert: {antrag_name}")
 
-                    # Markiere als berichtet NACH Verarbeitung
-                    reported_requests.add(page_id)
+                    # Markiere aktuellen Status als berichtet NACH Verarbeitung
+                    reported_requests[page_id] = status
                     save_reported_requests(reported_requests)
 
                 else:
-                    # Alte Einträge: bereits berichtet
+                    # Alte Einträge: Status hat sich nicht geändert
                     if status in ["Eingereicht", "Freigegeben", "Abgelehnt"]:
-                        logger.debug(f"⏭️ Überspringe bereits berichteten Antrag: {antrag_name}")
+                        logger.debug(f"⏭️ Überspringe bereits berichteten Antrag: {antrag_name} (Status: {status})")
 
             except Exception as page_error:
                 logger.error(f"Fehler bei Verarbeitung von Seite {page_id}: {page_error}")
@@ -332,7 +337,7 @@ def check_freigabe_requests_async():
 
         last_check_time = datetime.now(timezone.utc).isoformat()
         last_error = None
-        logger.info(f"✅ Polling abgeschlossen: {new_requests_count} neue Anträge gefunden, {len(reported_requests)} insgesamt gemeldet")
+        logger.info(f"✅ Polling abgeschlossen: {new_requests_count} Antrags-Updates verarbeitet, {len(reported_requests)} insgesamt erfasst")
 
         # Speichere den aktualisierten State in Cloud Storage
         save_reported_requests(reported_requests)
