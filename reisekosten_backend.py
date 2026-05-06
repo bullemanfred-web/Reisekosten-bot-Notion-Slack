@@ -278,27 +278,58 @@ def check_freigabe_requests_async():
             properties = page['properties']
 
             try:
-                # Extrahiere Properties mit besserem Error-Handling
-                # Status: try both 'status' type (native Notion status) und 'select' type (fallback)
+                # Extrahiere Properties mit robustem Error-Handling
+                # Status
+                status = ''
                 status_prop = properties.get('Status', {})
-                status = status_prop.get('status', {}).get('name', '') or status_prop.get('select', {}).get('name', '')
+                if isinstance(status_prop, dict):
+                    status_data = status_prop.get('status', {})
+                    if isinstance(status_data, dict):
+                        status = status_data.get('name', '')
+                    if not status:
+                        status_data = status_prop.get('select', {})
+                        if isinstance(status_data, dict):
+                            status = status_data.get('name', '')
 
-                # E-Mail kommt aus einer Formel, daher formula.string auslesen
-                email = properties.get('E-Mail', {}).get('formula', {}).get('string', '')
+                # E-Mail
+                email = ''
+                email_prop = properties.get('E-Mail', {})
+                if isinstance(email_prop, dict):
+                    formula_data = email_prop.get('formula', {})
+                    if isinstance(formula_data, dict):
+                        email = formula_data.get('string', '')
 
                 # Title ist eine Liste von Rich Text Objects
-                antrag_title_prop = properties.get('Antrag', {}).get('title', [])
                 antrag_name = 'Unbekannt'
-                if antrag_title_prop and isinstance(antrag_title_prop, list) and len(antrag_title_prop) > 0:
-                    antrag_name = antrag_title_prop[0].get('text', {}).get('content', 'Unbekannt')
+                antrag_prop = properties.get('Antrag', {})
+                if isinstance(antrag_prop, dict):
+                    antrag_title_prop = antrag_prop.get('title', [])
+                    if isinstance(antrag_title_prop, list) and len(antrag_title_prop) > 0:
+                        title_obj = antrag_title_prop[0]
+                        if isinstance(title_obj, dict):
+                            text_obj = title_obj.get('text', {})
+                            if isinstance(text_obj, dict):
+                                antrag_name = text_obj.get('content', 'Unbekannt')
 
                 # Vorgangs-ID ist eine Rich Text Liste
-                vorgangs_id_prop = properties.get('Vorgangs-ID', {}).get('rich_text', [])
                 vorgangs_id = ''
-                if vorgangs_id_prop and isinstance(vorgangs_id_prop, list) and len(vorgangs_id_prop) > 0:
-                    vorgangs_id = vorgangs_id_prop[0].get('text', {}).get('content', '')
+                vorgangs_prop = properties.get('Vorgangs-ID', {})
+                if isinstance(vorgangs_prop, dict):
+                    vorgangs_id_prop = vorgangs_prop.get('rich_text', [])
+                    if isinstance(vorgangs_id_prop, list) and len(vorgangs_id_prop) > 0:
+                        vorgangs_obj = vorgangs_id_prop[0]
+                        if isinstance(vorgangs_obj, dict):
+                            text_obj = vorgangs_obj.get('text', {})
+                            if isinstance(text_obj, dict):
+                                vorgangs_id = text_obj.get('content', '')
 
-                betrag = properties.get('erwarteter Betrag (EUR)', {}).get('number', 'N/A')
+                # Betrag
+                betrag = 'N/A'
+                betrag_prop = properties.get('erwarteter Betrag (EUR)', {})
+                if isinstance(betrag_prop, dict):
+                    betrag_val = betrag_prop.get('number')
+                    if betrag_val is not None:
+                        betrag = betrag_val
 
                 logger.debug(f"Seite {page_id}: Status={status}, Email={email}, Antrag={antrag_name}")
 
