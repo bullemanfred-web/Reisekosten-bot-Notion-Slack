@@ -281,6 +281,11 @@ def check_freigabe_requests_async():
 
                 logger.debug(f"Seite {page_id}: Status={status}, Email={email}, Antrag={antrag_name}")
 
+                # Markiere alle älteren Freigaben/Ablehnungen als bereits berichtet (beim ersten Poll)
+                if status in ["Freigegeben", "Abgelehnt"] and page_id not in reported_requests:
+                    reported_requests.add(page_id)
+                    logger.debug(f"Markiere als bereits berichtet (älter): {antrag_name}")
+
                 # Verarbeite nur neue Requests mit Status
                 if status and page_id not in reported_requests:
                     # Neue Anträge: Status = "Eingereicht" → Channel-Nachricht
