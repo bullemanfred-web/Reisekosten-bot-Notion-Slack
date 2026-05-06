@@ -30,11 +30,12 @@ jobs:
             --source . \
             --region europe-west1 \
             --allow-unauthenticated \
-            --platform managed
+            --platform managed \
+            --project ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Health Check
         run: |
-          SERVICE_URL=$(gcloud run services describe reisekosten-bot --region europe-west1 --format='value(status.url)')
+          SERVICE_URL=$(gcloud run services describe reisekosten-bot --region europe-west1 --project ${{ secrets.GCP_PROJECT_ID }} --format='value(status.url)')
           echo "Service deployed at: $SERVICE_URL"
           sleep 10
           curl -s "$SERVICE_URL/health" | jq .
