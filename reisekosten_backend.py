@@ -288,15 +288,11 @@ def check_freigabe_requests_async():
 
                 logger.debug(f"Seite {page_id}: Status={status}, Email={email}, Antrag={antrag_name}")
 
-                # Markiere alle älteren Einträge als bereits berichtet (beim ersten Poll)
-                # Das verhindert Duplikate, wenn die Instanz neustartet
-                if status in ["Eingereicht", "Freigegeben", "Abgelehnt"] and page_id not in reported_requests:
-                    reported_requests.add(page_id)
-                    logger.debug(f"Markiere als bereits berichtet (älter): {antrag_name}")
-
                 # Verarbeite nur neue Requests mit Status
                 if status and page_id not in reported_requests:
                     new_requests_count += 1
+                    logger.debug(f"✅ Neue Antrag erkannt: {antrag_name} (Status: {status})")
+
                     # Neue Anträge: Status = "Eingereicht" → Channel-Nachricht
                     if status == "Eingereicht" and email:
                         channel_msg = f"📝 *Reisekostenantrag* zu {vorgangs_id} | Antragsteller:in: {email} | Betrag: {betrag} EUR\n🔗 https://www.notion.so/{page_id}"
@@ -305,8 +301,6 @@ def check_freigabe_requests_async():
                                 channel=SLACK_CHANNEL_ID,
                                 text=channel_msg
                             )
-                            reported_requests.add(page_id)
-                            save_reported_requests(reported_requests)
                             logger.info(f"✅ Neue Antrag notifiziert im Channel: {antrag_name}")
                         except Exception as slack_err:
                             logger.error(f"Fehler beim Channel-Post: {slack_err}")
@@ -315,19 +309,22 @@ def check_freigabe_requests_async():
                     elif status == "Freigegeben" and email:
                         message = f"✅ Dein Reisekostenantrag *{antrag_name}* zu {vorgangs_id} wurde **freigegeben**. | Betrag: {betrag} EUR\n🔗 https://www.notion.so/{page_id}"
                         if send_slack_dm(email, message):
-                            reported_requests.add(page_id)
-                            # Speichere sofort nach erfolgreichem Versand
-                            save_reported_requests(reported_requests)
                             logger.info(f"✅ Freigabe notifiziert: {antrag_name}")
 
                     # Abgelehnt: DM an Antragsteller
                     elif status == "Abgelehnt" and email:
                         message = f"❌ Dein Reisekostenantrag *{antrag_name}* zu {vorgangs_id} wurde **abgelehnt**.\n🔗 https://www.notion.so/{page_id}"
                         if send_slack_dm(email, message):
-                            reported_requests.add(page_id)
-                            # Speichere sofort nach erfolgreichem Versand
-                            save_reported_requests(reported_requests)
                             logger.info(f"✅ Ablehnung notifiziert: {antrag_name}")
+
+                    # Markiere als berichtet NACH Verarbeitung
+                    reported_requests.add(page_id)
+                    save_reported_requests(reported_requests)
+
+                else:
+                    # Alte Einträge: bereits berichtet
+                    if status in ["Eingereicht", "Freigegeben", "Abgelehnt"]:
+                        logger.debug(f"⏭️ Überspringe bereits berichteten Antrag: {antrag_name}")
 
             except Exception as page_error:
                 logger.error(f"Fehler bei Verarbeitung von Seite {page_id}: {page_error}")
