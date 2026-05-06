@@ -278,14 +278,26 @@ def check_freigabe_requests_async():
             properties = page['properties']
 
             try:
-                # Extrahiere Properties
-                # Status: try both 'status' type (native Notion status) and 'select' type (fallback)
+                # Extrahiere Properties mit besserem Error-Handling
+                # Status: try both 'status' type (native Notion status) und 'select' type (fallback)
                 status_prop = properties.get('Status', {})
                 status = status_prop.get('status', {}).get('name', '') or status_prop.get('select', {}).get('name', '')
+
                 # E-Mail kommt aus einer Formel, daher formula.string auslesen
                 email = properties.get('E-Mail', {}).get('formula', {}).get('string', '')
-                antrag_name = properties.get('Antrag', {}).get('title', [{}])[0].get('text', {}).get('content', 'Unbekannt')
-                vorgangs_id = properties.get('Vorgangs-ID', {}).get('rich_text', [{}])[0].get('text', {}).get('content', '')
+
+                # Title ist eine Liste von Rich Text Objects
+                antrag_title_prop = properties.get('Antrag', {}).get('title', [])
+                antrag_name = 'Unbekannt'
+                if antrag_title_prop and isinstance(antrag_title_prop, list) and len(antrag_title_prop) > 0:
+                    antrag_name = antrag_title_prop[0].get('text', {}).get('content', 'Unbekannt')
+
+                # Vorgangs-ID ist eine Rich Text Liste
+                vorgangs_id_prop = properties.get('Vorgangs-ID', {}).get('rich_text', [])
+                vorgangs_id = ''
+                if vorgangs_id_prop and isinstance(vorgangs_id_prop, list) and len(vorgangs_id_prop) > 0:
+                    vorgangs_id = vorgangs_id_prop[0].get('text', {}).get('content', '')
+
                 betrag = properties.get('erwarteter Betrag (EUR)', {}).get('number', 'N/A')
 
                 logger.debug(f"Seite {page_id}: Status={status}, Email={email}, Antrag={antrag_name}")
