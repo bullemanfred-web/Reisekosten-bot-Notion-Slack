@@ -27,18 +27,22 @@ jobs:
         run: |
           gcloud auth configure-docker
 
-      - name: Deploy to Cloud Run
+    - name: Deploy to Cloud Run
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
         run: |
           gcloud run deploy reisekosten-bot \
             --source . \
             --region europe-west1 \
             --allow-unauthenticated \
             --platform managed \
-            --project ${{ secrets.GCP_PROJECT_ID }}
+            --project $GCP_PROJECT_ID
 
-      - name: Health Check
+    - name: Health Check
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
         run: |
-          SERVICE_URL=$(gcloud run services describe reisekosten-bot --region europe-west1 --project ${{ secrets.GCP_PROJECT_ID }} --format='value(status.url)')
+          SERVICE_URL=$(gcloud run services describe reisekosten-bot --region europe-west1 --project $GCP_PROJECT_ID --format='value(status.url)')
           echo "Service deployed at: $SERVICE_URL"
           sleep 10
           curl -s "$SERVICE_URL/health" | jq .
