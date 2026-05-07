@@ -28,8 +28,11 @@ def get_slack_client() -> Optional[SlackClient]:
         logger.error(f"Slack Client Fehler: {e}")
         return None
 
-def send_slack_dm(slack_client: Optional[SlackClient], user_email: str, message: str) -> bool:
-    """Sendet Slack DM an Benutzer"""
+def send_slack_dm(slack_client: Optional[SlackClient], user_email: str, message) -> bool:
+    """
+    Sendet Slack DM an Benutzer
+    message: str (einfach) oder dict mit blocks (formatiert)
+    """
     try:
         if not slack_client:
             logger.warning("Slack nicht konfiguriert")
@@ -38,7 +41,15 @@ def send_slack_dm(slack_client: Optional[SlackClient], user_email: str, message:
         logger.info(f"Versuche, DM an {user_email} zu senden...")
         users = slack_client.users_lookupByEmail(email=user_email)
         user_id = users["user"]["id"]
-        slack_client.chat_postMessage(channel=user_id, text=message)
+
+        # Unterstütze sowohl einfache Text-Messages als auch Block Kit
+        if isinstance(message, dict):
+            # Block Kit Message
+            slack_client.chat_postMessage(channel=user_id, **message)
+        else:
+            # Text Message
+            slack_client.chat_postMessage(channel=user_id, text=message)
+
         logger.info(f"✅ DM versendet an {user_email} (User ID: {user_id})")
         return True
 

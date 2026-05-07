@@ -12,6 +12,11 @@ from notion_client_module import NotionClient, APIResponseError
 from config import REISEKOSTEN_FREIGABE_DB_ID
 from cloud_storage import load_reported_requests, save_reported_requests
 from slack_client_module import SlackClient, send_slack_dm
+from message_templates import (
+    build_new_request_channel_message,
+    build_approval_dm_message,
+    build_rejection_dm_message
+)
 
 logger = logging.getLogger(__name__)
 
@@ -119,6 +124,26 @@ def check_freigabe_requests_async(
                     if betrag_val is not None:
                         betrag = betrag_val
 
+                # Ziel
+                ziel = 'N/A'
+                ziel_prop = properties.get('Ziel', {})
+                if isinstance(ziel_prop, dict):
+                    ziel_text_list = ziel_prop.get('rich_text', [])
+                    if isinstance(ziel_text_list, list) and len(ziel_text_list) > 0:
+                        ziel_obj = ziel_text_list[0]
+                        if isinstance(ziel_obj, dict):
+                            ziel_text = ziel_obj.get('text', {})
+                            if isinstance(ziel_text, dict):
+                                ziel = ziel_text.get('content', 'N/A')
+
+                # Reisedatum
+                reisedatum = 'N/A'
+                reisedatum_prop = properties.get('Reisedatum', {})
+                if isinstance(reisedatum_prop, dict):
+                    reisedatum_data = reisedatum_prop.get('date', {})
+                    if isinstance(reisedatum_data, dict):
+                        reisedatum = reisedatum_data.get('start', 'N/A')
+
                 logger.debug(f"Seite {page_id}: Status={status}, Email={email}, Antrag={antrag_name}")
 
                 # Prüfe: Ist dieser Antrag neu ODER hat der Status sich geändert?
@@ -131,11 +156,19 @@ def check_freigabe_requests_async(
 
                     # Neue Anträge: Status = "Eingereicht" → Channel-Nachricht
                     if status == "Eingereicht" and is_new and email:
-                        channel_msg = f"📝 *Reisekostenantrag* zu {vorgangs_id} | Antragsteller:in: {email} | Betrag: {betrag} EUR\n🔗 https://www.notion.so/{page_id}"
+                        message_blocks = build_new_request_channel_message(
+                            antrag_name=antrag_name,
+                            vorgangs_id=vorgangs_id,
+                            email=email,
+                            betrag=betrag,
+                            ziel=ziel,
+                            reisedatum=reisedatum,
+                            page_id=page_id
+                        )
                         try:
                             slack_client.chat_postMessage(
                                 channel=slack_channel_id,
-                                text=channel_msg
+                                **message_blocks
                             )
                             logger.info(f"✅ Neue Antrag notifiziert im Channel: {antrag_name}")
                         except Exception as slack_err:
@@ -143,14 +176,28 @@ def check_freigabe_requests_async(
 
                     # Freigegeben: DM an Antragsteller (egal ob neu oder Status-Update)
                     elif status == "Freigegeben" and email:
-                        message = f"✅ Dein Reisekostenantrag *{antrag_name}* zu {vorgangs_id} wurde **freigegeben**. | Betrag: {betrag} EUR\n🔗 https://www.notion.so/{page_id}"
-                        if send_slack_dm(slack_client, email, message):
+                        message_blocks = build_approval_dm_message(
+                            antrag_name=antrag_name,
+                            vorgangs_id=vorgangs_id,
+                            betrag=betrag,
+                            ziel=ziel,
+                            reisedatum=reisedatum,
+                            page_id=page_id
+                        )
+                        if send_slack_dm(slack_client, email, message_blocks):
                             logger.info(f"✅ Freigabe notifiziert: {antrag_name}")
 
                     # Abgelehnt: DM an Antragsteller (egal ob neu oder Status-Update)
                     elif status == "Abgelehnt" and email:
-                        message = f"❌ Dein Reisekostenantrag *{antrag_name}* zu {vorgangs_id} wurde **abgelehnt**.\n🔗 https://www.notion.so/{page_id}"
-                        if send_slack_dm(slack_client, email, message):
+                        message_blocks = build_rejection_dm_message(
+                            antrag_name=antrag_name,
+                            vorgangs_id=vorgangs_id,
+                            betrag=betrag,
+                            ziel=ziel,
+                            reisedatum=reisedatum,
+                            page_id=page_id
+                        )
+                        if send_slack_dm(slack_client, email, message_blocks):
                             logger.info(f"✅ Ablehnung notifiziert: {antrag_name}")
 
                     # Markiere aktuellen Status als berichtet NACH Verarbeitung
