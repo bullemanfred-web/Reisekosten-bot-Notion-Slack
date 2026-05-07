@@ -15,6 +15,7 @@ from config import SLACK_CHANNEL_ID
 from notion_client_module import get_notion_client
 from slack_client_module import get_slack_client
 from polling import check_freigabe_requests_async
+from polling_receipts import check_receipt_requests_async
 
 app = Flask(__name__)
 
@@ -67,13 +68,23 @@ def check_all_endpoint():
         # Starte Polling im Background Thread
         def run_polling():
             global last_check_time, last_error
-            count, timestamp, error = check_freigabe_requests_async(
+
+            # Poll Anträge
+            count1, timestamp1, error1 = check_freigabe_requests_async(
                 notion_client,
                 slack_client,
                 SLACK_CHANNEL_ID
             )
-            last_check_time = timestamp
-            last_error = error
+
+            # Poll Rechnungen
+            count2, timestamp2, error2 = check_receipt_requests_async(
+                notion_client,
+                slack_client,
+                SLACK_CHANNEL_ID
+            )
+
+            last_check_time = timestamp2 if timestamp2 else timestamp1
+            last_error = error2 if error2 else error1
 
         thread = threading.Thread(target=run_polling, daemon=True)
         thread.start()

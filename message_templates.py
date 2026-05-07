@@ -219,3 +219,187 @@ def build_rejection_dm_message(
     ]
 
     return {"blocks": blocks}
+
+
+def build_new_receipt_channel_message(
+    titel: str,
+    summe: float,
+    email: str,
+    antraege: str = "N/A",
+    page_id: str = ""
+) -> Dict[str, Any]:
+    """
+    Erstellt formatierte Channel-Message für neue Rechnung
+    """
+
+    notion_link = f"https://www.notion.so/{page_id}" if page_id else "#"
+
+    blocks = [
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "💵 *Neue Rechnungseinreichung*"
+            }
+        },
+        {
+            "type": "divider"
+        },
+        {
+            "type": "section",
+            "fields": [
+                {
+                    "type": "mrkdwn",
+                    "text": f"*📄 Titel*\n{titel}"
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": f"*💰 Summe*\n€{summe:,.2f}" if isinstance(summe, (int, float)) else f"*💰 Summe*\n€{summe}"
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": f"*✉️ Einreicher*\n{email}"
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": f"*📋 Anträge*\n{antraege}"
+                }
+            ]
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"<{notion_link}|🔗 Rechnung in Notion öffnen>"
+            }
+        }
+    ]
+
+    return {"blocks": blocks}
+
+
+def build_receipt_approval_dm_message(
+    titel: str,
+    summe: float,
+    antraege: str = "N/A",
+    page_id: str = ""
+) -> Dict[str, Any]:
+    """
+    Erstellt formatierte DM für Rechnungs-Genehmigung
+    """
+
+    notion_link = f"https://www.notion.so/{page_id}" if page_id else "#"
+
+    blocks = [
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "✅ *Rechnung genehmigt!*"
+            }
+        },
+        {
+            "type": "divider"
+        },
+        {
+            "type": "section",
+            "fields": [
+                {
+                    "type": "mrkdwn",
+                    "text": f"*📄 Titel*\n{titel}"
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": f"*💰 Summe*\n€{summe:,.2f}" if isinstance(summe, (int, float)) else f"*💰 Summe*\n€{summe}"
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": f"*📋 Anträge*\n{antraege}"
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": "*✅ Status*\nGenehmigt"
+                }
+            ]
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "Deine Rechnung wurde genehmigt und wird verarbeitet."
+            }
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"<{notion_link}|🔗 Rechnung in Notion ansehen>"
+            }
+        }
+    ]
+
+    return {"blocks": blocks}
+
+
+def build_receipt_rejection_dm_message(
+    titel: str,
+    summe: float,
+    antraege: str = "N/A",
+    notizen: str = "Keine Notizen",
+    page_id: str = ""
+) -> Dict[str, Any]:
+    """
+    Erstellt formatierte DM für Rechnungs-Ablehnung
+    """
+
+    notion_link = f"https://www.notion.so/{page_id}" if page_id else "#"
+
+    blocks = [
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "❌ *Rechnung abgelehnt*"
+            }
+        },
+        {
+            "type": "divider"
+        },
+        {
+            "type": "section",
+            "fields": [
+                {
+                    "type": "mrkdwn",
+                    "text": f"*📄 Titel*\n{titel}"
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": f"*💰 Summe*\n€{summe:,.2f}" if isinstance(summe, (int, float)) else f"*💰 Summe*\n€{summe}"
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": f"*📋 Anträge*\n{antraege}"
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": "*❌ Status*\nAbgelehnt"
+                }
+            ]
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"*Notizen vom Vorstand:*\n{notizen}"
+            }
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"<{notion_link}|🔗 Rechnung in Notion ansehen>"
+            }
+        }
+    ]
+
+    return {"blocks": blocks}
