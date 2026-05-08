@@ -42,7 +42,7 @@ jobs:
             --allow-unauthenticated \
             --platform managed \
             --project reisekosten-workflow \
-            --update-env-vars NOTION_SERVICE_ACCOUNT_JSON="$NOTION_SERVICE_ACCOUNT_JSON",SLACK_BOT_TOKEN="$SLACK_BOT_TOKEN",GOOGLE_DRIVE_CREDENTIALS_B64="$GOOGLE_DRIVE_CREDENTIALS_B64"
+            --set-env-vars NOTION_SERVICE_ACCOUNT_JSON="$NOTION_SERVICE_ACCOUNT_JSON",SLACK_BOT_TOKEN="$SLACK_BOT_TOKEN",GOOGLE_DRIVE_CREDENTIALS_B64="$GOOGLE_DRIVE_CREDENTIALS_B64",GOOGLE_DRIVE_FOLDER_ID="1wCo_3qi6QPeRDm2uLOrOBD7AylqnUGmw"
 
       - name: Health Check
         run: |
