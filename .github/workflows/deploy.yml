@@ -31,13 +31,16 @@ jobs:
         env:
           GOOGLE_DRIVE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_DRIVE_CREDENTIALS_JSON }}
         run: |
+          # Base64 encode the credentials to avoid JSON escaping issues
+          GOOGLE_DRIVE_CREDENTIALS_B64=$(echo "$GOOGLE_DRIVE_CREDENTIALS_JSON" | base64 | tr -d '\n')
+          
           gcloud run deploy reisekosten-bot \
             --source . \
             --region europe-west1 \
             --allow-unauthenticated \
             --platform managed \
             --project reisekosten-workflow \
-            --update-env-vars GOOGLE_DRIVE_CREDENTIALS_JSON="$GOOGLE_DRIVE_CREDENTIALS_JSON"
+            --set-env-vars GOOGLE_DRIVE_CREDENTIALS_B64="$GOOGLE_DRIVE_CREDENTIALS_B64"
 
       - name: Health Check
         run: |

@@ -6,6 +6,7 @@ Alle Umgebungsvariablen und Konstanten
 
 import os
 import json
+import base64
 
 # ============================================================================
 # ENVIRONMENT VARIABLES
@@ -24,6 +25,17 @@ GCS_BUCKET_NAME = os.getenv("GCS_BUCKET_NAME", "reisekosten-workflow-state")
 GCS_STATE_FILE = "reported_requests.json"
 
 # Google Drive
-GOOGLE_DRIVE_CREDENTIALS_JSON = os.getenv("GOOGLE_DRIVE_CREDENTIALS_JSON", "")
+# Try to get base64-encoded credentials first (from Cloud Run deployment)
+GOOGLE_DRIVE_CREDENTIALS_B64 = os.getenv("GOOGLE_DRIVE_CREDENTIALS_B64", "")
+if GOOGLE_DRIVE_CREDENTIALS_B64:
+    try:
+        GOOGLE_DRIVE_CREDENTIALS_JSON = base64.b64decode(GOOGLE_DRIVE_CREDENTIALS_B64).decode('utf-8')
+    except Exception as e:
+        print(f"Error decoding base64 credentials: {e}")
+        GOOGLE_DRIVE_CREDENTIALS_JSON = ""
+else:
+    # Fallback to direct JSON (for local development)
+    GOOGLE_DRIVE_CREDENTIALS_JSON = os.getenv("GOOGLE_DRIVE_CREDENTIALS_JSON", "")
+
 GOOGLE_DRIVE_CREDENTIALS = json.loads(GOOGLE_DRIVE_CREDENTIALS_JSON) if GOOGLE_DRIVE_CREDENTIALS_JSON else {}
 GOOGLE_DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "1wCo_3qi6QPeRDm2uLOrOBD7AylqnUGmw")
