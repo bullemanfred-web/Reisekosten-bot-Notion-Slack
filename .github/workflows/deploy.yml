@@ -34,7 +34,8 @@ jobs:
             --region europe-west1 \
             --allow-unauthenticated \
             --platform managed \
-            --project reisekosten-workflow
+            --project reisekosten-workflow \
+            --set-env-vars GOOGLE_DRIVE_CREDENTIALS_JSON='${{ secrets.GOOGLE_DRIVE_CREDENTIALS_JSON }}'
 
       - name: Health Check
         run: |
