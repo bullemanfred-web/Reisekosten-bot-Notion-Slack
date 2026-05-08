@@ -94,7 +94,7 @@ def check_receipt_requests_async(
 
                 # Summe
                 summe = 'N/A'
-                summe_prop = properties.get('Summe', {})
+                summe_prop = properties.get('Summe (EUR)', {})
                 if isinstance(summe_prop, dict):
                     summe_val = summe_prop.get('number')
                     if summe_val is not None:
@@ -144,7 +144,6 @@ def check_receipt_requests_async(
                         message_blocks = build_new_receipt_channel_message(
                             titel=titel,
                             summe=summe,
-                            email=email,
                             antraege=antraege,
                             page_id=page_id
                         )

@@ -224,7 +224,6 @@ def build_rejection_dm_message(
 def build_new_receipt_channel_message(
     titel: str,
     summe: float,
-    email: str,
     antraege: str = "N/A",
     page_id: str = ""
 ) -> Dict[str, Any]:
@@ -232,7 +231,7 @@ def build_new_receipt_channel_message(
     Erstellt formatierte Channel-Message für neue Rechnung
     """
 
-    notion_link = f"https://www.notion.so/{page_id}" if page_id else "#"
+    notion_link = f"https://www.notion.so/{page_id.replace('-', '')}" if page_id else "#"
 
     blocks = [
         {
@@ -255,10 +254,6 @@ def build_new_receipt_channel_message(
                 {
                     "type": "mrkdwn",
                     "text": f"*💰 Summe*\n€{summe:,.2f}" if isinstance(summe, (int, float)) else f"*💰 Summe*\n€{summe}"
-                },
-                {
-                    "type": "mrkdwn",
-                    "text": f"*✉️ Einreicher*\n{email}"
                 },
                 {
                     "type": "mrkdwn",
