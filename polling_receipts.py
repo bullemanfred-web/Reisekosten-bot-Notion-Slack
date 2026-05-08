@@ -109,6 +109,17 @@ def check_receipt_requests_async(
                         email_val = formula_data.get('string')
                         if email_val:
                             email = email_val
+
+                # Name des Einreichers (aus Person-Property)
+                einreicher_name = 'Unbekannt'
+                einreicher_prop = properties.get('Name des Einreichers', {})
+                if isinstance(einreicher_prop, dict):
+                    people_list = einreicher_prop.get('people', [])
+                    if isinstance(people_list, list) and len(people_list) > 0:
+                        person_obj = people_list[0]
+                        if isinstance(person_obj, dict):
+                            einreicher_name = person_obj.get('name', 'Unbekannt')
+
                 antraege_prop = properties.get('Enthaltene Anträge', {})
 
                 # Anträge (als String)
@@ -145,6 +156,7 @@ def check_receipt_requests_async(
                         message_blocks = build_new_receipt_channel_message(
                             titel=titel,
                             summe=summe,
+                            einreicher_name=einreicher_name,
                             antraege=antraege,
                             page_id=page_id
                         )

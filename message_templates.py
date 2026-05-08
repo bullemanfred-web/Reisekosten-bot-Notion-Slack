@@ -224,6 +224,7 @@ def build_rejection_dm_message(
 def build_new_receipt_channel_message(
     titel: str,
     summe: float,
+    einreicher_name: str = "Unbekannt",
     antraege: str = "N/A",
     page_id: str = ""
 ) -> Dict[str, Any]:
@@ -247,6 +248,10 @@ def build_new_receipt_channel_message(
         {
             "type": "section",
             "fields": [
+                {
+                    "type": "mrkdwn",
+                    "text": f"*👤 Einreicher*\n{einreicher_name}"
+                },
                 {
                     "type": "mrkdwn",
                     "text": f"*📄 Titel*\n{titel}"
