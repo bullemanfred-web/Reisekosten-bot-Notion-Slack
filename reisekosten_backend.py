@@ -14,6 +14,7 @@ from flask import Flask, request, jsonify
 from config import SLACK_CHANNEL_ID
 from notion_client_module import get_notion_client
 from slack_client_module import get_slack_client
+from google_drive_module import get_drive_service
 from polling import check_freigabe_requests_async
 from polling_receipts import check_receipt_requests_async
 
@@ -32,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 notion_client = get_notion_client()
 slack_client = get_slack_client()
+drive_service = get_drive_service()
 
 last_check_time: Optional[str] = None
 last_error: Optional[str] = None
@@ -49,6 +51,7 @@ def health():
         "clients": {
             "slack_configured": bool(slack_client),
             "notion_configured": bool(notion_client),
+            "google_drive_configured": bool(drive_service),
         },
         "polling": {
             "last_check": last_check_time,
@@ -80,7 +83,8 @@ def check_all_endpoint():
             count2, timestamp2, error2 = check_receipt_requests_async(
                 notion_client,
                 slack_client,
-                SLACK_CHANNEL_ID
+                SLACK_CHANNEL_ID,
+                drive_service
             )
 
             last_check_time = timestamp2 if timestamp2 else timestamp1

@@ -12,6 +12,7 @@ from notion_client_module import NotionClient, APIResponseError
 from config import REISEKOSTEN_RECHNUNG_DB_ID
 from cloud_storage import load_reported_requests, save_reported_requests
 from slack_client_module import SlackClient, send_slack_dm
+from google_drive_module import get_drive_service, upload_file_from_url
 from message_templates import (
     build_new_receipt_channel_message,
     build_receipt_approval_dm_message,
@@ -23,7 +24,8 @@ logger = logging.getLogger(__name__)
 def check_receipt_requests_async(
     notion_client: Optional[NotionClient],
     slack_client: Optional[SlackClient],
-    slack_channel_id: str
+    slack_channel_id: str,
+    drive_service: Optional = None
 ) -> tuple[int, str, Optional[str]]:
     """
     Pollt Notion API für Rechnungseinreichungen
@@ -141,7 +143,19 @@ def check_receipt_requests_async(
                             if isinstance(notizen_text, dict):
                                 notizen = notizen_text.get('content', 'Keine Notizen')
 
-                logger.debug(f"Seite {page_id}: Status={status}, Titel={titel}, Summe={summe}")
+                # Rechnungs-PDF (Files Property)
+                pdf_urls = []
+                pdf_prop = properties.get('Rechnungs-PDF', {})
+                if isinstance(pdf_prop, dict):
+                    files_list = pdf_prop.get('files', [])
+                    if isinstance(files_list, list):
+                        for file_obj in files_list:
+                            if isinstance(file_obj, dict):
+                                file_url = file_obj.get('file', {}).get('url') if file_obj.get('file') else None
+                                if file_url:
+                                    pdf_urls.append({'url': file_url, 'name': file_obj.get('name', 'Rechnung.pdf')})
+
+                logger.debug(f"Seite {page_id}: Status={status}, Titel={titel}, Summe={summe}, PDFs={len(pdf_urls)}")
 
                 # Prüfe: Ist diese Rechnung neu ODER hat der Status sich geändert?
                 last_notified_status = reported_receipts.get(page_id)
@@ -169,7 +183,7 @@ def check_receipt_requests_async(
                         except Exception as slack_err:
                             logger.error(f"Fehler beim Channel-Post: {slack_err}")
 
-                    # Genehmigt: DM an Einreicher (egal ob neu oder Status-Update)
+                    # Genehmigt: DM an Einreicher + PDF zu Google Drive hochladen
                     elif status == "Genehmigt" and email and email != 'N/A':
                         message_blocks = build_receipt_approval_dm_message(
                             titel=titel,
@@ -179,6 +193,24 @@ def check_receipt_requests_async(
                         )
                         if send_slack_dm(slack_client, email, message_blocks):
                             logger.info(f"✅ Genehmigung notifiziert: {titel}")
+
+                        # PDFs zu Google Drive hochladen
+                        if pdf_urls and drive_service:
+                            for pdf in pdf_urls:
+                                try:
+                                    file_id = upload_file_from_url(
+                                        drive_service,
+                                        pdf['url'],
+                                        pdf['name']
+                                    )
+                                    if file_id:
+                                        logger.info(f"✅ PDF zu Google Drive hochgeladen: {pdf['name']} (ID: {file_id})")
+                                    else:
+                                        logger.warning(f"⚠️ PDF-Upload fehlgeschlagen: {pdf['name']}")
+                                except Exception as e:
+                                    logger.error(f"Fehler beim PDF-Upload: {e}")
+                        elif pdf_urls and not drive_service:
+                            logger.warning("⚠️ Google Drive Service nicht verfügbar - PDFs werden nicht hochgeladen")
 
                     # Abgelehnt: DM an Einreicher (egal ob neu oder Status-Update)
                     elif status == "Abgelehnt" and email and email != 'N/A':

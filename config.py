@@ -5,6 +5,7 @@ Alle Umgebungsvariablen und Konstanten
 """
 
 import os
+import json
 
 # ============================================================================
 # ENVIRONMENT VARIABLES
@@ -21,3 +22,8 @@ REISEKOSTEN_RECHNUNG_DB_ID = os.getenv("REISEKOSTEN_RECHNUNG_DB_ID", "d2a81613f5
 # Cloud Storage
 GCS_BUCKET_NAME = os.getenv("GCS_BUCKET_NAME", "reisekosten-workflow-state")
 GCS_STATE_FILE = "reported_requests.json"
+
+# Google Drive
+GOOGLE_DRIVE_CREDENTIALS_JSON = os.getenv("GOOGLE_DRIVE_CREDENTIALS_JSON", "")
+GOOGLE_DRIVE_CREDENTIALS = json.loads(GOOGLE_DRIVE_CREDENTIALS_JSON) if GOOGLE_DRIVE_CREDENTIALS_JSON else {}
+GOOGLE_DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "1wCo_3qi6QPeRDm2uLOrOBD7AylqnUGmw")
