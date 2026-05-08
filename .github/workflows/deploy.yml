@@ -26,14 +26,8 @@ jobs:
       - name: Configure Docker for GCP
         run: |
           gcloud auth configure-docker
-
-      - name: Deploy to Cloud Run
-        env:
-          GOOGLE_DRIVE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_DRIVE_CREDENTIALS_JSON }}
-          NOTION_SERVICE_ACCOUNT_JSON: ${{ secrets.NOTION_SERVICE_ACCOUNT_JSON }}
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           
-        - name: Deploy to Cloud Run
+      - name: Deploy to Cloud Run
         env:
           GOOGLE_DRIVE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_DRIVE_CREDENTIALS_JSON }}
           NOTION_SERVICE_ACCOUNT_JSON: ${{ secrets.NOTION_SERVICE_ACCOUNT_JSON }}
