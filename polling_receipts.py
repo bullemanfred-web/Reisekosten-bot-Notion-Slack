@@ -76,7 +76,7 @@ def check_receipt_requests_async(
                 status = ''
                 status_prop = properties.get('Status', {})
                 if isinstance(status_prop, dict):
-                    status_data = status_prop.get('status', {})
+                    status_data = status_prop.get('select', {})
                     if isinstance(status_data, dict):
                         status = status_data.get('name', '')
 
