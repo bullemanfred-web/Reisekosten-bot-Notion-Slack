@@ -100,14 +100,15 @@ def check_receipt_requests_async(
                     if summe_val is not None:
                         summe = summe_val
 
-                # E-Mail (aus Relation zu Antragsdatenbank extrahieren)
-                # Fallback: Email aus einer möglichen E-Mail-Property
+                # E-Mail (aus Formel-Property)
                 email = 'N/A'
-                email_prop = properties.get('E-Mail des Einreichers', {})
+                email_prop = properties.get('E-Mail', {})
                 if isinstance(email_prop, dict):
-                    email_data = email_prop.get('email')
-                    if email_data:
-                        email = email_data
+                    formula_data = email_prop.get('formula', {})
+                    if isinstance(formula_data, dict):
+                        email_val = formula_data.get('string')
+                        if email_val:
+                            email = email_val
                 antraege_prop = properties.get('Enthaltene Anträge', {})
 
                 # Anträge (als String)
@@ -157,7 +158,6 @@ def check_receipt_requests_async(
                             logger.error(f"Fehler beim Channel-Post: {slack_err}")
 
                     # Genehmigt: DM an Einreicher (egal ob neu oder Status-Update)
-                    # Hier benötigen wir noch die E-Mail des Einreichers aus der DB
                     elif status == "Genehmigt" and email and email != 'N/A':
                         message_blocks = build_receipt_approval_dm_message(
                             titel=titel,
