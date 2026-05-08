@@ -7,6 +7,9 @@ Alle Umgebungsvariablen und Konstanten
 import os
 import json
 import base64
+import logging
+
+logger = logging.getLogger(__name__)
 
 # ============================================================================
 # ENVIRONMENT VARIABLES
@@ -31,24 +34,24 @@ if GOOGLE_DRIVE_CREDENTIALS_B64:
     try:
         GOOGLE_DRIVE_CREDENTIALS_JSON = base64.b64decode(GOOGLE_DRIVE_CREDENTIALS_B64).decode('utf-8')
     except Exception as e:
-        print(f"Error decoding base64 credentials: {e}")
+        logger.error(f"Error decoding base64 credentials: {e}")
         GOOGLE_DRIVE_CREDENTIALS_JSON = ""
 else:
     # Fallback to direct JSON (for local development)
     GOOGLE_DRIVE_CREDENTIALS_JSON = os.getenv("GOOGLE_DRIVE_CREDENTIALS_JSON", "")
 
 GOOGLE_DRIVE_CREDENTIALS = {}
-print(f"📋 GOOGLE_DRIVE_CREDENTIALS_B64 länge: {len(GOOGLE_DRIVE_CREDENTIALS_B64)} Zeichen")
-print(f"📋 GOOGLE_DRIVE_CREDENTIALS_JSON länge: {len(GOOGLE_DRIVE_CREDENTIALS_JSON)} Zeichen")
+logger.info(f"📋 GOOGLE_DRIVE_CREDENTIALS_B64 länge: {len(GOOGLE_DRIVE_CREDENTIALS_B64)} Zeichen")
+logger.info(f"📋 GOOGLE_DRIVE_CREDENTIALS_JSON länge: {len(GOOGLE_DRIVE_CREDENTIALS_JSON)} Zeichen")
 
 if GOOGLE_DRIVE_CREDENTIALS_JSON:
     try:
         GOOGLE_DRIVE_CREDENTIALS = json.loads(GOOGLE_DRIVE_CREDENTIALS_JSON)
-        print(f"✅ GOOGLE_DRIVE_CREDENTIALS geparst. Keys: {list(GOOGLE_DRIVE_CREDENTIALS.keys())}")
+        logger.info(f"✅ GOOGLE_DRIVE_CREDENTIALS geparst. Keys: {list(GOOGLE_DRIVE_CREDENTIALS.keys())}")
     except json.JSONDecodeError as e:
-        print(f"❌ Error parsing GOOGLE_DRIVE_CREDENTIALS_JSON: {e}")
+        logger.error(f"❌ Error parsing GOOGLE_DRIVE_CREDENTIALS_JSON: {e}")
         GOOGLE_DRIVE_CREDENTIALS = {}
 else:
-    print(f"⚠️ GOOGLE_DRIVE_CREDENTIALS_JSON ist leer")
+    logger.warning(f"⚠️ GOOGLE_DRIVE_CREDENTIALS_JSON ist leer")
 
 GOOGLE_DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "1wCo_3qi6QPeRDm2uLOrOBD7AylqnUGmw")
