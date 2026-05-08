@@ -58,7 +58,7 @@ def check_receipt_requests_async(
             database_id=REISEKOSTEN_RECHNUNG_DB_ID,
             filter={
                 "property": "Status",
-                "status": {
+                "select": {
                     "is_not_empty": True
                 }
             }
