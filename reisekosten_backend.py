@@ -35,6 +35,15 @@ notion_client = get_notion_client()
 slack_client = get_slack_client()
 drive_service = get_drive_service()
 
+# Debug: Explicit logging
+logger.info("=" * 80)
+logger.info("INITIALIZATION SUMMARY")
+logger.info("=" * 80)
+logger.info(f"notion_client: {'✅ AVAILABLE' if notion_client else '❌ NOT AVAILABLE'}")
+logger.info(f"slack_client: {'✅ AVAILABLE' if slack_client else '❌ NOT AVAILABLE'}")
+logger.info(f"drive_service: {'✅ AVAILABLE' if drive_service else '❌ NOT AVAILABLE'}")
+logger.info("=" * 80)
+
 last_check_time: Optional[str] = None
 last_error: Optional[str] = None
 

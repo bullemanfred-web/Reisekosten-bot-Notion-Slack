@@ -38,10 +38,17 @@ else:
     GOOGLE_DRIVE_CREDENTIALS_JSON = os.getenv("GOOGLE_DRIVE_CREDENTIALS_JSON", "")
 
 GOOGLE_DRIVE_CREDENTIALS = {}
+print(f"📋 GOOGLE_DRIVE_CREDENTIALS_B64 länge: {len(GOOGLE_DRIVE_CREDENTIALS_B64)} Zeichen")
+print(f"📋 GOOGLE_DRIVE_CREDENTIALS_JSON länge: {len(GOOGLE_DRIVE_CREDENTIALS_JSON)} Zeichen")
+
 if GOOGLE_DRIVE_CREDENTIALS_JSON:
     try:
         GOOGLE_DRIVE_CREDENTIALS = json.loads(GOOGLE_DRIVE_CREDENTIALS_JSON)
+        print(f"✅ GOOGLE_DRIVE_CREDENTIALS geparst. Keys: {list(GOOGLE_DRIVE_CREDENTIALS.keys())}")
     except json.JSONDecodeError as e:
-        print(f"Error parsing GOOGLE_DRIVE_CREDENTIALS_JSON: {e}")
+        print(f"❌ Error parsing GOOGLE_DRIVE_CREDENTIALS_JSON: {e}")
         GOOGLE_DRIVE_CREDENTIALS = {}
+else:
+    print(f"⚠️ GOOGLE_DRIVE_CREDENTIALS_JSON ist leer")
+
 GOOGLE_DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "1wCo_3qi6QPeRDm2uLOrOBD7AylqnUGmw")

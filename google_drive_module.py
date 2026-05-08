@@ -20,21 +20,35 @@ logger = logging.getLogger(__name__)
 
 def get_drive_service():
     """Initialisiert Google Drive Service"""
+    logger.info("=" * 80)
+    logger.info("GOOGLE DRIVE SERVICE INITIALIZATION")
+    logger.info("=" * 80)
+    logger.info(f"GOOGLE_DRIVE_CREDENTIALS dict länge: {len(GOOGLE_DRIVE_CREDENTIALS)} keys")
+    logger.info(f"GOOGLE_DRIVE_CREDENTIALS keys: {list(GOOGLE_DRIVE_CREDENTIALS.keys())}")
+
     try:
         if not GOOGLE_DRIVE_CREDENTIALS:
-            logger.warning("Google Drive nicht konfiguriert (GOOGLE_DRIVE_CREDENTIALS leer)")
+            logger.warning("❌ Google Drive nicht konfiguriert (GOOGLE_DRIVE_CREDENTIALS leer)")
+            logger.info("=" * 80)
             return None
+
+        logger.info(f"✅ Credentials vorhanden. Client Email: {GOOGLE_DRIVE_CREDENTIALS.get('client_email', 'N/A')}")
 
         credentials = service_account.Credentials.from_service_account_info(
             GOOGLE_DRIVE_CREDENTIALS,
             scopes=['https://www.googleapis.com/auth/drive']
         )
+        logger.info("✅ Service Account Credentials erstellt")
 
         service = build('drive', 'v3', credentials=credentials)
         logger.info("✅ Google Drive Service initialisiert")
+        logger.info("=" * 80)
         return service
     except Exception as e:
-        logger.error(f"Google Drive Service Fehler: {e}")
+        logger.error(f"❌ Google Drive Service Fehler: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        logger.info("=" * 80)
         return None
 
 def upload_file_from_url(
