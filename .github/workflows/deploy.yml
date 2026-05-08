@@ -28,6 +28,8 @@ jobs:
           gcloud auth configure-docker
 
       - name: Deploy to Cloud Run
+        env:
+          GOOGLE_DRIVE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_DRIVE_CREDENTIALS_JSON }}
         run: |
           gcloud run deploy reisekosten-bot \
             --source . \
@@ -35,7 +37,7 @@ jobs:
             --allow-unauthenticated \
             --platform managed \
             --project reisekosten-workflow \
-            --set-env-vars GOOGLE_DRIVE_CREDENTIALS_JSON='${{ secrets.GOOGLE_DRIVE_CREDENTIALS_JSON }}'
+            --update-env-vars GOOGLE_DRIVE_CREDENTIALS_JSON="$GOOGLE_DRIVE_CREDENTIALS_JSON"
 
       - name: Health Check
         run: |
