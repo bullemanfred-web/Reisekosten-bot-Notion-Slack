@@ -33,20 +33,22 @@ jobs:
           NOTION_SERVICE_ACCOUNT_JSON: ${{ secrets.NOTION_SERVICE_ACCOUNT_JSON }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           
+        - name: Deploy to Cloud Run
+        env:
+          GOOGLE_DRIVE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_DRIVE_CREDENTIALS_JSON }}
+          NOTION_SERVICE_ACCOUNT_JSON: ${{ secrets.NOTION_SERVICE_ACCOUNT_JSON }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         run: |
           # Base64 encode the credentials to avoid JSON escaping issues
           GOOGLE_DRIVE_CREDENTIALS_B64=$(echo "$GOOGLE_DRIVE_CREDENTIALS_JSON" | base64 | tr -d '\n')
-          
+
           gcloud run deploy reisekosten-bot \
             --source . \
             --region europe-west1 \
             --allow-unauthenticated \
             --platform managed \
             --project reisekosten-workflow \
-            --update-env-vars \
-              NOTION_SERVICE_ACCOUNT_JSON="$NOTION_SERVICE_ACCOUNT_JSON",\
-              SLACK_BOT_TOKEN="$SLACK_BOT_TOKEN",\
-              GOOGLE_DRIVE_CREDENTIALS_B64="$GOOGLE_DRIVE_CREDENTIALS_B64"
+            --update-env-vars NOTION_SERVICE_ACCOUNT_JSON="$NOTION_SERVICE_ACCOUNT_JSON",SLACK_BOT_TOKEN="$SLACK_BOT_TOKEN",GOOGLE_DRIVE_CREDENTIALS_B64="$GOOGLE_DRIVE_CREDENTIALS_B64"
 
       - name: Health Check
         run: |
