@@ -87,13 +87,20 @@ def upload_file_from_url(
                 'parents': [folder_id]
             }
 
-            # Upload
+            # Upload mit Warten auf Abschluss
             media = MediaFileUpload(tmp_path, resumable=True)
-            file = drive_service.files().create(
+            request = drive_service.files().create(
                 body=file_metadata,
                 media_body=media,
                 fields='id'
-            ).execute()
+            )
+
+            # Warte auf Upload-Abschluss
+            file = None
+            while file is None:
+                status, file = request.next_chunk()
+                if status:
+                    logger.debug(f"Upload-Fortschritt {file_name}: {int(status.progress() * 100)}%")
 
             file_id = file.get('id')
             logger.info(f"✅ Datei zu Google Drive hochgeladen: {file_name} (ID: {file_id})")
