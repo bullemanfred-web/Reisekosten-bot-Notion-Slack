@@ -77,6 +77,11 @@ def check_all_endpoint():
     try:
         logger.info("🔄 /scheduled/check-all triggered")
 
+        # Check für Debug-Parameter in Query String
+        force_reprocess = request.args.get('force_reprocess', 'false').lower() == 'true'
+        if force_reprocess:
+            logger.info("⚠️ DEBUG: force_reprocess aktiviert")
+
         # Starte Polling im Background Thread
         def run_polling():
             global last_check_time, last_error
@@ -93,7 +98,8 @@ def check_all_endpoint():
                 notion_client,
                 slack_client,
                 SLACK_CHANNEL_ID,
-                drive_service
+                drive_service,
+                force_reprocess=force_reprocess
             )
 
             last_check_time = timestamp2 if timestamp2 else timestamp1

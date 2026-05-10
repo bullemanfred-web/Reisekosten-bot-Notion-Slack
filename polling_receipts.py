@@ -25,18 +25,22 @@ def check_receipt_requests_async(
     notion_client: Optional[NotionClient],
     slack_client: Optional[SlackClient],
     slack_channel_id: str,
-    drive_service: Optional = None
+    drive_service: Optional = None,
+    force_reprocess: bool = False
 ) -> tuple[int, str, Optional[str]]:
     """
     Pollt Notion API für Rechnungseinreichungen
     Gibt zurück: (count, timestamp, error_message)
+    force_reprocess: Wenn True, werden alle Rechnungen neu verarbeitet (Debug)
     """
     logger.info("=" * 80)
     logger.info("RECHNUNGS-POLLING GESTARTET")
+    if force_reprocess:
+        logger.info("⚠️ DEBUG MODE: force_reprocess=True - alle Rechnungen werden neu verarbeitet")
     logger.info("=" * 80)
 
     # Lade aktuelle reported_receipts aus Cloud Storage
-    reported_receipts = load_reported_requests()
+    reported_receipts = load_reported_requests() if not force_reprocess else {}
 
     # Sicherheit: stelle sicher, dass reported_receipts ein Dict ist
     if not isinstance(reported_receipts, dict):
