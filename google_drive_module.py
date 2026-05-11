@@ -1,79 +1,56 @@
 #!/usr/bin/env python3
 """
-Google Drive Module
-Google Drive API Integration für Datei-Upload
+Google Cloud Storage Module (ehemals Google Drive Module)
+Google Cloud Storage Integration für Datei-Upload
+Service Account hat bereits Permissions auf den GCS Bucket
 """
 
 import logging
 import requests
 from typing import Optional
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
-from googleapiclient.errors import HttpError
+from google.cloud import storage
 import tempfile
 import os
 
-from config import GOOGLE_DRIVE_CREDENTIALS, GOOGLE_DRIVE_FOLDER_ID
+from config import GCS_BUCKET_NAME
 
 logger = logging.getLogger(__name__)
 
 def get_drive_service():
-    """Initialisiert Google Drive Service"""
+    """
+    Dummy-Funktion für Rückwärtskompatibilität
+    Gibt None zurück, da wir jetzt GCS verwenden
+    """
     logger.info("=" * 80)
-    logger.info("GOOGLE DRIVE SERVICE INITIALIZATION")
+    logger.info("GOOGLE CLOUD STORAGE INITIALIZATION")
     logger.info("=" * 80)
-    logger.info(f"GOOGLE_DRIVE_CREDENTIALS dict länge: {len(GOOGLE_DRIVE_CREDENTIALS)} keys")
-    logger.info(f"GOOGLE_DRIVE_CREDENTIALS keys: {list(GOOGLE_DRIVE_CREDENTIALS.keys())}")
-
-    try:
-        if not GOOGLE_DRIVE_CREDENTIALS:
-            logger.warning("❌ Google Drive nicht konfiguriert (GOOGLE_DRIVE_CREDENTIALS leer)")
-            logger.info("=" * 80)
-            return None
-
-        logger.info(f"✅ Credentials vorhanden. Client Email: {GOOGLE_DRIVE_CREDENTIALS.get('client_email', 'N/A')}")
-
-        credentials = service_account.Credentials.from_service_account_info(
-            GOOGLE_DRIVE_CREDENTIALS,
-            scopes=['https://www.googleapis.com/auth/drive']
-        )
-        logger.info("✅ Service Account Credentials erstellt")
-
-        service = build('drive', 'v3', credentials=credentials)
-        logger.info("✅ Google Drive Service initialisiert")
-        logger.info("=" * 80)
-        return service
-    except Exception as e:
-        logger.error(f"❌ Google Drive Service Fehler: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
-        logger.info("=" * 80)
-        return None
+    logger.info(f"✅ GCS Bucket: {GCS_BUCKET_NAME}")
+    logger.info("✅ Service Account hat Permissions auf GCS")
+    logger.info("=" * 80)
+    return None  # Kompatibilität mit polling_receipts.py (check: if drive_service)
 
 def upload_file_from_url(
-    drive_service,
+    drive_service,  # Kompatibilität, wird nicht verwendet
     file_url: str,
     file_name: str,
-    folder_id: str = GOOGLE_DRIVE_FOLDER_ID
+    folder_id: str = None  # Kompatibilität, wird nicht verwendet
 ) -> Optional[str]:
     """
-    Lädt eine Datei von einer URL zu Google Drive hoch
-    Gibt File-ID zurück oder None bei Fehler
+    Lädt eine Datei von einer URL zu Google Cloud Storage hoch
+    Gibt GCS-Pfad zurück oder None bei Fehler
+
+    GCS-Pfad: gs://bucket-name/rechnungen/file_name
     """
     try:
-        if not drive_service:
-            logger.warning("Google Drive Service nicht verfügbar")
-            return None
-
         if not file_url:
             logger.warning("File URL ist leer")
             return None
 
         # Datei von URL downloaden
-        logger.info(f"Downloading file from: {file_url}")
+        logger.info(f"Downloading file from Notion: {file_url}")
         response = requests.get(file_url, timeout=30)
         response.raise_for_status()
+        logger.debug(f"✅ Datei heruntergeladen: {len(response.content)} bytes")
 
         # Temporäre Datei erstellen
         with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file_name)[1]) as tmp_file:
@@ -81,42 +58,37 @@ def upload_file_from_url(
             tmp_path = tmp_file.name
 
         try:
-            # Metadaten für Upload
-            file_metadata = {
-                'name': file_name,
-                'parents': [folder_id]
-            }
+            # Google Cloud Storage Client initialisieren
+            # Nutzt Application Default Credentials (Service Account)
+            storage_client = storage.Client()
+            bucket = storage_client.bucket(GCS_BUCKET_NAME)
 
-            # Upload mit Warten auf Abschluss
-            media = MediaFileUpload(tmp_path, resumable=True)
-            request = drive_service.files().create(
-                body=file_metadata,
-                media_body=media,
-                fields='id'
-            )
+            # GCS-Pfad: rechnungen/filename
+            gcs_path = f"rechnungen/{file_name}"
+            blob = bucket.blob(gcs_path)
 
-            # Warte auf Upload-Abschluss
-            file = None
-            while file is None:
-                status, file = request.next_chunk()
-                if status:
-                    logger.debug(f"Upload-Fortschritt {file_name}: {int(status.progress() * 100)}%")
+            logger.info(f"📤 Uploading zu GCS: {gcs_path}")
 
-            file_id = file.get('id')
-            logger.info(f"✅ Datei zu Google Drive hochgeladen: {file_name} (ID: {file_id})")
-            return file_id
+            # Upload zur GCS
+            blob.upload_from_filename(tmp_path)
+
+            logger.info(f"✅ Datei zu Google Cloud Storage hochgeladen: {file_name}")
+            logger.info(f"   GCS-Pfad: gs://{GCS_BUCKET_NAME}/{gcs_path}")
+
+            # Rückgabe des GCS-Pfads statt Drive-ID
+            return f"gs://{GCS_BUCKET_NAME}/{gcs_path}"
 
         finally:
             # Temporäre Datei löschen
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
+                logger.debug(f"Temporäre Datei gelöscht: {tmp_path}")
 
     except requests.RequestException as e:
-        logger.error(f"Fehler beim Download von {file_url}: {e}")
-        return None
-    except HttpError as e:
-        logger.error(f"Google Drive API Fehler: {e}")
+        logger.error(f"Fehler beim Download von Notion: {e}")
         return None
     except Exception as e:
-        logger.error(f"Fehler beim Upload zu Google Drive: {e}")
+        logger.error(f"Fehler beim GCS-Upload: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return None
