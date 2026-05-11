@@ -198,29 +198,27 @@ def check_receipt_requests_async(
                         if send_slack_dm(slack_client, email, message_blocks):
                             logger.info(f"✅ Genehmigung notifiziert: {titel}")
 
-                        # PDFs zu Google Drive hochladen
-                        logger.info(f"📊 PDF-Upload Check: pdf_urls={len(pdf_urls) if pdf_urls else 0}, drive_service={'✅ YES' if drive_service else '❌ NO'}")
-                        if pdf_urls and drive_service:
-                            logger.info(f"🚀 Starte PDF-Upload für {len(pdf_urls)} Datei(en)")
+                        # PDFs zu Google Cloud Storage hochladen
+                        logger.info(f"📊 PDF-Upload Check: pdf_urls={len(pdf_urls) if pdf_urls else 0}")
+                        if pdf_urls:
+                            logger.info(f"🚀 Starte PDF-Upload zu GCS für {len(pdf_urls)} Datei(en)")
                             for pdf in pdf_urls:
                                 try:
-                                    logger.info(f"📤 Uploading: {pdf['name']} ({pdf['url']})")
-                                    file_id = upload_file_from_url(
-                                        drive_service,
+                                    logger.info(f"📤 Uploading zu GCS: {pdf['name']} ({pdf['url']})")
+                                    gcs_path = upload_file_from_url(
+                                        None,  # GCS doesn't need drive_service
                                         pdf['url'],
                                         pdf['name']
                                     )
-                                    if file_id:
-                                        logger.info(f"✅ PDF zu Google Drive hochgeladen: {pdf['name']} (ID: {file_id})")
+                                    if gcs_path:
+                                        logger.info(f"✅ PDF zu Google Cloud Storage hochgeladen: {pdf['name']} ({gcs_path})")
                                     else:
                                         logger.warning(f"⚠️ PDF-Upload fehlgeschlagen: {pdf['name']}")
                                 except Exception as e:
-                                    logger.error(f"Fehler beim PDF-Upload: {e}")
+                                    logger.error(f"Fehler beim GCS-Upload: {e}")
                                     import traceback
                                     logger.error(traceback.format_exc())
-                        elif pdf_urls and not drive_service:
-                            logger.warning("⚠️ Google Drive Service nicht verfügbar - PDFs werden nicht hochgeladen")
-                        elif not pdf_urls:
+                        else:
                             logger.debug(f"⚠️ Keine PDFs gefunden für Rechnung: {titel}")
 
                     # Abgelehnt: DM an Einreicher (egal ob neu oder Status-Update)
