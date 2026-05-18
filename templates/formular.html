@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rechnungseinreichung – Bundesblock</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f2f2f2;
+      color: #111;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px 60px;
+    }
+
+    header {
+      width: 100%;
+      max-width: 680px;
+      border-bottom: 4px solid #CC343C;
+      padding-bottom: 16px;
+      margin-bottom: 32px;
+    }
+    header h1 {
+      font-family: Calibri, Arial, sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: #781728;
+    }
+    header p { font-size: 13px; color: #999; margin-top: 4px; }
+
+    .card {
+      width: 100%;
+      max-width: 680px;
+      background: #fff;
+      border-top: 4px solid #781728;
+      border-left: 4px solid #781728;
+      border-right: 1px solid #ccc;
+      border-bottom: 1px solid #ccc;
+      border-radius: 2px;
+      padding: 28px 32px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-family: Calibri, Arial, sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      color: #781728;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      color: #781728;
+      margin-bottom: 6px;
+      margin-top: 18px;
+    }
+    label:first-of-type { margin-top: 0; }
+    .hint {
+      font-size: 12px;
+      color: #999;
+      font-style: italic;
+      margin-top: -3px;
+      margin-bottom: 6px;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ccc;
+      border-radius: 2px;
+      font-size: 14px;
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      color: #111;
+      transition: border-color .15s;
+      appearance: none;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #CC343C;
+      background: #fff;
+    }
+    select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23781728' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; }
+    textarea { resize: vertical; min-height: 80px; }
+
+    /* Einreicher mit Avatar */
+    .einreicher-option-inner { display: flex; align-items: center; gap: 10px; }
+    .avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: #CC343C; color: #fff;
+      font-size: 12px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; overflow: hidden;
+    }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+    /* Anträge */
+    .loading-hint { font-size: 13px; color: #999; padding: 12px 0; }
+    .antrag-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 14px; margin-bottom: 8px;
+      background: #f5f5f5;
+      border: 1px solid #ccc; border-left: 3px solid #CC343C;
+      border-radius: 2px; cursor: pointer; transition: background .12s;
+    }
+    .antrag-item:hover { background: #eee; }
+    .antrag-item.selected { background: #fff0f0; border-left-color: #781728; border-color: #CC343C; }
+    .antrag-item input[type="checkbox"] { width: 16px; height: 16px; margin-top: 2px; accent-color: #781728; flex-shrink: 0; }
+    .antrag-info { flex: 1; }
+    .antrag-id { font-size: 11px; font-weight: 700; color: #CC343C; text-transform: uppercase; letter-spacing: .05em; }
+    .antrag-titel { font-size: 14px; font-weight: 600; color: #111; margin: 2px 0; }
+    .antrag-meta { font-size: 12px; color: #666; }
+    .antrag-betrag { font-size: 14px; font-weight: 700; color: #781728; white-space: nowrap; flex-shrink: 0; }
+    .no-antraege { padding: 14px; background: #fffbf0; border-left: 3px solid #E8A000; font-size: 13px; color: #666; }
+
+    #summen-info {
+      display: none; margin-top: 10px; padding: 10px 14px;
+      background: #f0fff4; border-left: 3px solid #2d7a4f;
+      font-size: 13px; color: #2d7a4f;
+    }
+
+    /* PDF Upload */
+    .upload-zone {
+      border: 2px dashed #ccc; border-radius: 4px;
+      padding: 28px 20px; text-align: center;
+      background: #f5f5f5; cursor: pointer;
+      transition: border-color .15s, background .15s;
+      position: relative;
+    }
+    .upload-zone:hover, .upload-zone.dragover { border-color: #CC343C; background: #fff0f0; }
+    .upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .upload-icon { font-size: 32px; margin-bottom: 8px; }
+    .upload-text { font-size: 14px; color: #666; }
+    .upload-text strong { color: #781728; }
+    .upload-hint { font-size: 12px; color: #999; margin-top: 4px; }
+    .file-selected {
+      display: none; margin-top: 10px; padding: 10px 14px;
+      background: #f0fff4; border-left: 3px solid #2d7a4f;
+      font-size: 13px; color: #1a5c38;
+      display: none; align-items: center; gap: 10px;
+    }
+    .file-selected.visible { display: flex; }
+    .file-remove {
+      margin-left: auto; cursor: pointer; color: #CC343C;
+      font-size: 18px; line-height: 1; flex-shrink: 0;
+    }
+
+    /* Submit */
+    .btn-submit {
+      display: block; width: 100%; padding: 14px; margin-top: 24px;
+      background: #781728; color: #fff;
+      font-size: 15px; font-weight: 700; font-family: Calibri, Arial, sans-serif;
+      border: none; border-radius: 2px; cursor: pointer; letter-spacing: .03em;
+      transition: background .15s;
+    }
+    .btn-submit:hover:not(:disabled) { background: #CC343C; }
+    .btn-submit:disabled { background: #ccc; cursor: not-allowed; }
+
+    #feedback {
+      display: none; width: 100%; max-width: 680px;
+      padding: 16px 20px; border-radius: 2px; font-size: 14px; margin-top: 8px;
+    }
+    #feedback.success { background: #f0fff4; border-left: 4px solid #2d7a4f; color: #1a5c38; }
+    #feedback.error   { background: #fff0f0; border-left: 4px solid #CC343C; color: #781728; }
+
+    footer { margin-top: 40px; font-size: 12px; color: #bbb; text-align: center; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Rechnungseinreichung</h1>
+    <p>Blockchain Bundesverband e.V. – nur freigegebene, noch nicht abgerechnete Anträge werden angezeigt</p>
+  </header>
+
+  <!-- A: Angaben -->
+  <div class="card">
+    <div class="card-title">A &nbsp;Angaben zur Einreichung</div>
+
+    <label for="einreicher">Name des Einreichers *</label>
+    <p class="hint">Auswahl aus den Notion-Mitgliedern des Bundesblock</p>
+    <select id="einreicher" onchange="validateForm()">
+      <option value="">⏳ Mitglieder werden geladen…</option>
+    </select>
+
+    <label for="rechnung-titel">Titel der Einreichung *</label>
+    <input type="text" id="rechnung-titel" placeholder="z.B. Dienstreise Berlin März 2026" oninput="validateForm()" />
+
+    <label for="summe">Tatsächliche Gesamtsumme (EUR) *</label>
+    <input type="number" id="summe" min="0" step="0.01" placeholder="0.00" oninput="validateForm()" />
+  </div>
+
+  <!-- B: Anträge -->
+  <div class="card">
+    <div class="card-title">B &nbsp;Freigegebene Anträge auswählen *</div>
+    <p class="hint">Nur Anträge mit Status „Freigegeben" und noch nicht abgerechnet.</p>
+    <div id="antraege-container">
+      <div class="loading-hint">⏳ Anträge werden geladen…</div>
+    </div>
+    <div id="summen-info"></div>
+  </div>
+
+  <!-- C: PDF -->
+  <div class="card">
+    <div class="card-title">C &nbsp;Rechnungsdokument *</div>
+    <p class="hint">Das PDF wird automatisch in Google Drive hochgeladen und in Notion verlinkt.</p>
+
+    <div class="upload-zone" id="upload-zone"
+         ondragover="event.preventDefault(); this.classList.add('dragover')"
+         ondragleave="this.classList.remove('dragover')"
+         ondrop="handleDrop(event)">
+      <input type="file" id="pdf-input" accept=".pdf,application/pdf"
+             onchange="handleFileSelect(this.files[0])" />
+      <div class="upload-icon">📄</div>
+      <div class="upload-text"><strong>PDF hier ablegen</strong> oder klicken zum Auswählen</div>
+      <div class="upload-hint">Nur PDF, max. 20 MB</div>
+    </div>
+
+    <div class="file-selected" id="file-selected">
+      <span>📎</span>
+      <span id="file-name"></span>
+      <span id="file-size" style="color:#999; font-size:12px;"></span>
+      <span class="file-remove" onclick="removeFile()" title="Datei entfernen">×</span>
+    </div>
+  </div>
+
+  <!-- D: Aufschlüsselung -->
+  <div class="card">
+    <div class="card-title">D &nbsp;Aufschlüsselung (optional)</div>
+    <label for="aufschluesselung">Betrag je Antrag</label>
+    <p class="hint">z.B. „2026/001: 65,00 EUR · 2026/002: 120,00 EUR"</p>
+    <textarea id="aufschluesselung" placeholder="Optionale Aufschlüsselung…"></textarea>
+  </div>
+
+  <button class="btn-submit" id="btn-submit" disabled onclick="submitForm()">
+    Rechnung einreichen
+  </button>
+
+  <div id="feedback"></div>
+
+  <footer>Blockchain Bundesverband e.V. &nbsp;·&nbsp; Reisekosten-Verwaltung</footer>
+
+  <script>
+    let alleAntraege  = [];
+    let selectedFile  = null;
+    let alleMitglieder = [];
+
+    // ── Initialisierung ───────────────────────────────────────────────────────
+    Promise.all([ladeMitglieder(), ladeAntraege()]);
+
+    // ── Mitglieder laden ──────────────────────────────────────────────────────
+    async function ladeMitglieder() {
+      try {
+        const res  = await fetch("/api/mitglieder");
+        const data = await res.json();
+        const sel  = document.getElementById("einreicher");
+
+        if (data.error || !data.mitglieder?.length) {
+          sel.innerHTML = '<option value="">Keine Mitglieder gefunden</option>';
+          return;
+        }
+
+        alleMitglieder = data.mitglieder;
+        sel.innerHTML  = '<option value="">– Bitte auswählen –</option>';
+        alleMitglieder.forEach(m => {
+          const opt   = document.createElement("option");
+          opt.value   = m.id;
+          opt.text    = m.name + (m.email ? ` (${m.email})` : "");
+          sel.appendChild(opt);
+        });
+      } catch (e) {
+        document.getElementById("einreicher").innerHTML =
+          `<option value="">Fehler: ${e.message}</option>`;
+      }
+    }
+
+    // ── Anträge laden ─────────────────────────────────────────────────────────
+    async function ladeAntraege() {
+      try {
+        const res  = await fetch("/api/antraege");
+        const data = await res.json();
+        const cont = document.getElementById("antraege-container");
+
+        if (data.error) {
+          cont.innerHTML = `<div class="no-antraege">⚠ ${data.error}</div>`;
+          return;
+        }
+
+        alleAntraege = data.antraege || [];
+
+        if (!alleAntraege.length) {
+          cont.innerHTML = `<div class="no-antraege">
+            ✅ Keine offenen Anträge – alle freigegebenen Anträge wurden bereits abgerechnet.
+          </div>`;
+          return;
+        }
+
+        cont.innerHTML = alleAntraege.map(a => `
+          <div class="antrag-item" id="item-${a.id}" onclick="toggleAntrag('${a.id}')">
+            <input type="checkbox" id="cb-${a.id}" value="${a.id}"
+                   onchange="updateSumme()" onclick="event.stopPropagation()" />
+            <div class="antrag-info">
+              <div class="antrag-id">${a.vorgang_id || "–"}</div>
+              <div class="antrag-titel">${esc(a.titel)}</div>
+              <div class="antrag-meta">${a.datum || "Datum unbekannt"}${a.anlass && a.anlass !== a.titel ? " · " + esc(a.anlass) : ""}</div>
+            </div>
+            <div class="antrag-betrag">${eur(a.betrag)}</div>
+          </div>`).join("");
+
+        updateSumme();
+      } catch (e) {
+        document.getElementById("antraege-container").innerHTML =
+          `<div class="no-antraege">⚠ Verbindungsfehler: ${e.message}</div>`;
+      }
+    }
+
+    function toggleAntrag(id) {
+      const cb = document.getElementById("cb-" + id);
+      cb.checked = !cb.checked;
+      document.getElementById("item-" + id).classList.toggle("selected", cb.checked);
+      updateSumme();
+    }
+
+    function getSelected() {
+      return alleAntraege.filter(a => document.getElementById("cb-" + a.id)?.checked);
+    }
+
+    function updateSumme() {
+      const sel  = getSelected();
+      const info = document.getElementById("summen-info");
+      if (sel.length) {
+        const sum = sel.reduce((s, a) => s + (a.betrag || 0), 0);
+        info.style.display = "block";
+        info.innerHTML = `✅ ${sel.length} Antrag${sel.length > 1 ? "e" : ""} ausgewählt &nbsp;·&nbsp; Genehmigter Gesamtbetrag: <strong>${eur(sum)}</strong>`;
+      } else {
+        info.style.display = "none";
+      }
+      validateForm();
+    }
+
+    // ── PDF-Upload ────────────────────────────────────────────────────────────
+    function handleDrop(e) {
+      e.preventDefault();
+      document.getElementById("upload-zone").classList.remove("dragover");
+      const file = e.dataTransfer.files[0];
+      if (file) handleFileSelect(file);
+    }
+
+    function handleFileSelect(file) {
+      if (!file) return;
+      if (file.type !== "application/pdf" && !file.name.endsWith(".pdf")) {
+        showFeedback("Bitte nur PDF-Dateien hochladen.", "error");
+        return;
+      }
+      if (file.size > 20 * 1024 * 1024) {
+        showFeedback("Die Datei ist größer als 20 MB.", "error");
+        return;
+      }
+      selectedFile = file;
+      document.getElementById("file-name").textContent = file.name;
+      document.getElementById("file-size").textContent = formatBytes(file.size);
+      document.getElementById("file-selected").classList.add("visible");
+      validateForm();
+    }
+
+    function removeFile() {
+      selectedFile = null;
+      document.getElementById("pdf-input").value = "";
+      document.getElementById("file-selected").classList.remove("visible");
+      validateForm();
+    }
+
+    // ── Validierung ───────────────────────────────────────────────────────────
+    function validateForm() {
+      const ok =
+        document.getElementById("einreicher").value &&
+        document.getElementById("rechnung-titel").value.trim() &&
+        document.getElementById("summe").value &&
+        getSelected().length > 0 &&
+        selectedFile !== null;
+      document.getElementById("btn-submit").disabled = !ok;
+    }
+
+    // ── Absenden ──────────────────────────────────────────────────────────────
+    async function submitForm() {
+      const titel          = document.getElementById("rechnung-titel").value.trim();
+      const summe          = parseFloat(document.getElementById("summe").value);
+      const einreicher_id  = document.getElementById("einreicher").value;
+      const aufschl        = document.getElementById("aufschluesselung").value.trim();
+      const selected       = getSelected();
+
+      if (!titel || !summe || !einreicher_id || !selected.length || !selectedFile) {
+        showFeedback("Bitte alle Pflichtfelder ausfüllen.", "error");
+        return;
+      }
+
+      const btn = document.getElementById("btn-submit");
+      btn.disabled    = true;
+      btn.textContent = "⏳ Wird eingereicht…";
+
+      try {
+        const fd = new FormData();
+        fd.append("rechnung_titel",   titel);
+        fd.append("summe",            summe);
+        fd.append("antrag_ids",       JSON.stringify(selected.map(a => a.id)));
+        fd.append("einreicher_id",    einreicher_id);
+        fd.append("aufschluesselung", aufschl);
+        fd.append("rechnung_pdf",     selectedFile, selectedFile.name);
+
+        const res  = await fetch("/api/einreichung", { method: "POST", body: fd });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          showFeedback(
+            `✅ Einreichung erfolgreich! Das PDF wurde in Google Drive gespeichert und der Eintrag in Notion angelegt. Der Vorstand wurde benachrichtigt.`,
+            "success"
+          );
+          // Formular zurücksetzen
+          document.getElementById("rechnung-titel").value = "";
+          document.getElementById("summe").value          = "";
+          document.getElementById("aufschluesselung").value = "";
+          document.getElementById("einreicher").value     = "";
+          removeFile();
+          setTimeout(ladeAntraege, 1200);
+        } else {
+          showFeedback(`⚠ Fehler: ${data.error || "Unbekannter Fehler"}`, "error");
+          btn.disabled    = false;
+          btn.textContent = "Rechnung einreichen";
+        }
+      } catch (e) {
+        showFeedback(`⚠ Verbindungsfehler: ${e.message}`, "error");
+        btn.disabled    = false;
+        btn.textContent = "Rechnung einreichen";
+      }
+    }
+
+    // ── Hilfsfunktionen ───────────────────────────────────────────────────────
+    function showFeedback(msg, type) {
+      const el  = document.getElementById("feedback");
+      el.textContent = msg;
+      el.className   = type;
+      el.style.display = "block";
+      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    function eur(n) {
+      return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(n || 0);
+    }
+
+    function esc(s) {
+      return (s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    }
+
+    function formatBytes(b) {
+      return b > 1048576 ? (b / 1048576).toFixed(1) + " MB" : (b / 1024).toFixed(0) + " KB";
+    }
+  </script>
+</body>
+</html>

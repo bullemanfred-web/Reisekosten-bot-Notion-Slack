@@ -19,6 +19,8 @@ from polling import check_freigabe_requests_async
 from polling_receipts import check_receipt_requests_async
 
 app = Flask(__name__)
+from formular_routes import formular_bp
+app.register_blueprint(formular_bp)
 
 # Logging mit strukturiertem Format
 logging.basicConfig(
