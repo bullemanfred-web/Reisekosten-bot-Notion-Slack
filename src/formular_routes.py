@@ -205,10 +205,33 @@ def notion_create_einreichung(
             "rich_text": [{"text": {"content": aufschluesselung}}]
         }
 
-    return _notion.pages.create(
+    # Rechnung erstellen
+    rechnung_page = _notion.pages.create(
         parent={"database_id": REISEKOSTEN_RECHNUNG_DB_ID},
         properties=properties,
     )
+    rechnung_id = rechnung_page["id"]
+
+    # Rückrelation auf jedem Antrag setzen (Notion synct nicht automatisch)
+    for aid in antrag_ids:
+        try:
+            antrag = _notion.pages.retrieve(page_id=aid)
+            existing = antrag.get("properties", {}).get("Rechnung", {}).get("relation", [])
+            existing_ids = [r["id"] for r in existing]
+            if rechnung_id not in existing_ids:
+                _notion.pages.update(
+                    page_id=aid,
+                    properties={
+                        "Rechnung": {
+                            "relation": existing + [{"id": rechnung_id}]
+                        }
+                    }
+                )
+                logger.info(f"✅ Rückrelation gesetzt: Antrag {aid} → Rechnung {rechnung_id}")
+        except Exception as e:
+            logger.warning(f"⚠️ Rückrelation fehlgeschlagen für Antrag {aid}: {e}")
+
+    return rechnung_page
 
 
 # ── Endpunkte ─────────────────────────────────────────────────────────────────
