@@ -1,23 +1,24 @@
-# Reisekosten-Workflow Backend v3
+# Reisekosten-Workflow Backend v4
 
 ## Übersicht
 
-Poll-basierte Notification Engine für Reisekostenantrag-Verwaltung. Integriert Notion (Datenbank), Slack (Notifications), und Google Cloud Storage (State Persistence).
+Poll-basierte Notification Engine für Reisekostenantrag- und Rechnungsverwaltung. Integriert Notion (Datenbank), Slack (Notifications), Google Cloud Storage (State Persistence & PDF-Zwischenspeicher), Google Drive (PDF-Archiv) und ein HTML-Erfassungsformular.
 
 ## Architektur
-
-```
+templates/formular.html          Rechnungserfassung (HTML-Formular)
+↓
 main.py                          Entry Point (Cloud Run)
-    ↓
+↓
 reisekosten_backend.py           Flask App + Endpoints
-    ├── /health                  Health Check
-    └── /scheduled/check-all     Cloud Scheduler Trigger (60 min)
-        ↓
-    polling.py                   Polling Logic
-        ├── notion_client_module Notion API Client
-        ├── slack_client_module  Slack Integration
-        └── cloud_storage.py     State Management
-```
+├── /health                  Health Check
+├── /formular                Rechnungserfassungsformular
+├── /api/mitglieder          Notion-Mitgliederliste
+├── /api/antraege            Offene Anträge
+├── /api/einreichung         PDF-Upload + Notion-Eintrag
+└── /scheduled/check-all    Cloud Scheduler Trigger (60 min)
+├── polling.py           Antrags-Polling
+└── polling_receipts.py  Rechnungs-Polling
+└── cloud_storage.py State Management (getrennte Keys)
 
 ## Module
 
@@ -25,32 +26,22 @@ reisekosten_backend.py           Flask App + Endpoints
 Zentrale Konfiguration — alle Environment Variables und Konstanten.
 
 ```python
-NOTION_SERVICE_ACCOUNT_JSON  # Notion Service Account Token
-SLACK_BOT_TOKEN              # Slack Bot Token
-SLACK_CHANNEL_ID             # Zielkanal für neue Anträge (#reisekosten)
-REISEKOSTEN_FREIGABE_DB_ID   # Notion Database ID
-GCS_BUCKET_NAME              # Cloud Storage Bucket für State
+NOTION_SERVICE_ACCOUNT_JSON      # Notion Service Account Token
+SLACK_BOT_TOKEN                  # Slack Bot Token
+SLACK_CHANNEL_ID                 # Zielkanal für neue Anträge (#reisekosten)
+REISEKOSTEN_FREIGABE_DB_ID       # Notion Database ID (Anträge)
+REISEKOSTEN_RECHNUNG_DB_ID       # Notion Database ID (Rechnungen)
+GCS_BUCKET_NAME                  # Cloud Storage Bucket (reisekosten-workflow-state)
 ```
 
-### `notion_client_module.py`
-Notion API Client Initialisierung mit Error-Handling und Logging.
-
-**Funktion:**
-- `get_notion_client()` — Erstellt authenticated Notion Client
-
-### `slack_client_module.py`
-Slack SDK Wrapper für DMs und Channel Messages.
-
-**Funktionen:**
-- `get_slack_client()` — Erstellt authenticated Slack Client
-- `send_slack_dm(client, email, message)` — Sendet DM an Benutzer
-
 ### `cloud_storage.py`
-State Management für Google Cloud Storage.
+State Management für Google Cloud Storage — zwei getrennte State-Keys.
 
 **Funktionen:**
-- `load_reported_requests()` — Lädt State beim Poll-Start
-- `save_reported_requests(dict)` — Speichert State nach Verarbeitung
+- `load_reported_requests()` — Lädt Antrags-State beim Poll-Start
+- `save_reported_requests(dict)` — Speichert Antrags-State nach Verarbeitung
+- `load_reported_receipts()` — Lädt Rechnungs-State beim Poll-Start
+- `save_reported_receipts(dict)` — Speichert Rechnungs-State nach Verarbeitung
 
 **State Format:**
 ```json
@@ -59,106 +50,115 @@ State Management für Google Cloud Storage.
     "page_id_1": "Freigegeben",
     "page_id_2": "Eingereicht"
   },
-  "last_updated": "2026-05-06T15:40:00Z"
+  "reported_receipts": {
+    "page_id_3": "Eingereicht",
+    "page_id_4": "Genehmigt"
+  },
+  "last_updated": "2026-05-19T18:35:00Z"
 }
 ```
 
-### `polling.py`
-Hauptlogik für Notion-Polling und Notification-Routing.
+> Wichtig: Anträge und Rechnungen nutzen getrennte State-Keys (reported_requests vs. reported_receipts) in derselben JSON-Datei. Das verhindert gegenseitiges Überschreiben bei parallelem Polling.
 
-**Funktion:**
-- `check_freigabe_requests_async()` — Pollt alle Requests, erkennt Status-Changes, sendet Notifications
+### `polling.py`
+Polling-Logik für Reisekostenfreigabe-Anträge.
 
 **Notification-Routing:**
-- **Neue Anfrage** (Status = "Eingereicht") → Channel-Message (#reisekosten)
-- **Status geändert** (→ "Freigegeben", "Abgelehnt") → DM an Antragsteller
+- Neue Anfrage (Status = "Eingereicht") → Channel-Message (#reisekosten)
+- Status geändert (→ "Freigegeben", "Abgelehnt") → DM an Antragsteller
 
-### `reisekosten_backend.py`
-Flask App mit Cloud Scheduler Integration.
+### `polling_receipts.py`
+Polling-Logik für Rechnungen.
+
+**Notification-Routing:**
+- Neue Rechnung (Status = "Eingereicht") → Channel-Message (#reisekosten)
+- Status = "Genehmigt" → DM an Einreicher + PDF-Download aus Notion → Upload nach GCS → Cloud Function triggert GCS→Drive Sync
+
+### `formular_routes.py`
+Flask Blueprint für das Rechnungserfassungsformular.
 
 **Endpoints:**
-- `GET /health` — Health Check mit Client-Status
-- `POST /scheduled/check-all` — Trigger für Cloud Scheduler (Polling startet im Background Thread)
+- GET /formular — Rendert HTML-Formular
+- GET /api/mitglieder — Gibt Notion-Mitgliederliste zurück
+- GET /api/antraege — Gibt offene, freigegebene Anträge zurück
+- POST /api/einreichung — Nimmt PDF entgegen, lädt in GCS hoch, erstellt Notion-Eintrag
 
-### `main.py`
-Entry Point für Cloud Run. Importiert und startet Flask App.
+**Dateiname-Schema:** Rechnung_<Titel>.pdf (aus Rechnungstitel generiert)
+
+### `gcs-to-drive-sync` (Cloud Function)
+Event-getriggerte Cloud Function in us-central1.
+- Trigger: google.storage.object.finalize auf rechnungen/-Prefix
+- Aktion: PDF von GCS → Google Drive Ordner (1wCo_3qi6QPeRDm2uLOrOBD7AylqnUGmw)
+- Cleanup: Löscht PDF aus GCS nach erfolgreichem Drive-Upload
 
 ## Deployment
 
+### Cloud Run (automatisch via GitHub Actions)
 ```bash
-# Local Development
-python reisekosten_backend.py
-
-# Cloud Run
-gcloud run deploy reisekosten-bot \
-  --source . \
-  --runtime python311 \
-  --region europe-west1 \
-  --set-env-vars SLACK_BOT_TOKEN=xoxb-...,NOTION_SERVICE_ACCOUNT_JSON='{"access_token":"..."}' \
-  --allow-unauthenticated
+git add .
+git commit -m "feat: beschreibung"
+git push origin main
 ```
 
-## Cloud Scheduler
+GitHub Actions: https://github.com/bullemanfred-web/Reisekosten-bot-Notion-Slack/actions
 
-Konfiguriere Cloud Scheduler, um alle 60 Minuten `POST /scheduled/check-all` zu triggern:
-
+### Cloud Function (manuell)
 ```bash
-gcloud scheduler jobs create http check-reisekosten \
-  --location europe-west1 \
-  --schedule "*/60 * * * *" \
-  --http-method POST \
-  --uri https://reisekosten-bot-XXXXX.run.app/scheduled/check-all \
-  --oidc-service-account-email [SERVICE-ACCOUNT]@[PROJECT].iam.gserviceaccount.com
+cd /tmp/gcf
+gcloud functions deploy gcs-to-drive-sync \
+  --region=us-central1 \
+  --runtime=python311 \
+  --trigger-resource=reisekosten-workflow-state \
+  --trigger-event=google.storage.object.finalize \
+  --entry-point=gcs_to_drive_sync \
+  --source=. \
+  --memory=256MB
 ```
 
-## Removed Features
+### Health Check
+```bash
+curl https://reisekosten-bot-20041081481.europe-west1.run.app/health | jq .
+```
 
-❌ **Webhook Endpoint** (`/webhook/notion`)
-- Reason: Webhooks sind unreliable für Production (Notion häufig nicht erreichbar)
-- Alternative: Polling alle 60 Minuten mit Cloud Scheduler (robust + einfach)
+### Scheduler manuell triggern
+```bash
+gcloud scheduler jobs run check-reisekosten --location=europe-west1
+```
+
+## GCS Bucket
+gs://reisekosten-workflow-state/
+├── reported_requests.json      # State (Anträge + Rechnungen)
+└── rechnungen/                 # Temporärer PDF-Zwischenspeicher
+└── *.pdf                   # Werden nach Drive-Sync gelöscht
+
+> Der Bucket ist öffentlich lesbar (allUsers:objectViewer) damit Notion die PDF-Links anzeigen kann.
 
 ## State Deduplication
 
-Der Kernel des Systems: **Dict[request_id] → last_notified_status**
+Dict[request_id] → last_notified_status verhindert Duplikate:
 
-```python
-reported_requests = {
-    "abc123": "Eingereicht",     # Wir haben notifiziert für Status "Eingereicht"
-    "def456": "Freigegeben"      # Wir haben notifiziert für Status "Freigegeben"
-}
-
-# Next Poll:
-# - Wenn Status gleich last_notified_status: skip
-# - Wenn Status != last_notified_status: notify + update
-# - Wenn Request nicht in Dict: notify + add
-```
-
-Das verhindert Duplikate und erlaubt Status-Change Detection.
-
-## Logging
-
-```
-DEBUG    — Property Extraction Details
-INFO     — Polling Start/End, Notifications Sent
-ERROR    — API Failures, Configuration Issues
-```
-
-Logging Level kann in `reisekosten_backend.py` angepasst werden:
-```python
-logging.basicConfig(level=logging.DEBUG)  # oder INFO, ERROR
-```
+- Status == last_notified_status → skip
+- Status != last_notified_status → notify + update
+- Request nicht im Dict → notify + add
 
 ## Fehlerbehandlung
 
-- **Cloud Storage nicht verfügbar** → Fallback zu RAM-only (keine Persistenz)
-- **Notion API Fehler** → Logged + State wird nicht aktualisiert (Retry next poll)
-- **Slack Fehler** → Logged + State wird aktualisiert (Message ging verloren, aber State zählt es)
+| Szenario | Verhalten |
+|----------|-----------|
+| Cloud Storage nicht verfügbar | Fallback zu RAM-only |
+| Notion API Fehler | Geloggt, Retry next poll |
+| Slack Fehler | Geloggt, Polling läuft weiter |
+| PDF Download schlägt fehl | Geloggt, weiter |
 
 ## Development Checklist
 
-- [ ] Alle Environment Variables gesetzt (`config.py`)
+- [ ] Alle Environment Variables gesetzt
 - [ ] Notion Service Account Token valide
 - [ ] Slack Bot hat Channel + DM Permissions
-- [ ] Cloud Storage Bucket exists
+- [ ] Cloud Storage Bucket existiert
 - [ ] Cloud Scheduler konfiguriert (alle 60 Min)
-- [ ] Health Endpoint antwortet mit 200
+- [ ] Cloud Function gcs-to-drive-sync aktiv (us-central1)
+- [ ] Health Endpoint antwortet mit "status": "healthy"
+
+**Version:** 4.0
+**Letzte Aktualisierung:** 19. Mai 2026
