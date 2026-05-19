@@ -80,7 +80,7 @@ Flask Blueprint für das Rechnungserfassungsformular.
 **Endpoints:**
 - GET /formular — Rendert HTML-Formular
 - GET /api/mitglieder — Gibt Notion-Mitgliederliste zurück
-- GET /api/antraege — Gibt offene, freigegebene Anträge zurück
+- GET /api/antraege          — Gibt offene, freigegebene Anträge zurück (ohne bereits abgerechnete)
 - POST /api/einreichung — Nimmt PDF entgegen, lädt in GCS hoch, erstellt Notion-Eintrag
 
 **Dateiname-Schema:** Rechnung_<Titel>.pdf (aus Rechnungstitel generiert)
