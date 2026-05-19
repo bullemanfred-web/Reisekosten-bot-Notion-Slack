@@ -10,7 +10,7 @@ from typing import Dict, Optional
 
 from notion_client_module import NotionClient, APIResponseError
 from config import REISEKOSTEN_RECHNUNG_DB_ID
-from cloud_storage import load_reported_requests, save_reported_requests
+from cloud_storage import load_reported_receipts, save_reported_receipts
 from slack_client_module import SlackClient, send_slack_dm
 from google_drive_module import get_drive_service, upload_file_from_url
 from message_templates import (
@@ -40,7 +40,7 @@ def check_receipt_requests_async(
     logger.info("=" * 80)
 
     # Lade aktuelle reported_receipts aus Cloud Storage
-    reported_receipts = load_reported_requests() if not force_reprocess else {}
+    reported_receipts = load_reported_receipts() if not force_reprocess else {}
 
     # Sicherheit: stelle sicher, dass reported_receipts ein Dict ist
     if not isinstance(reported_receipts, dict):
@@ -235,7 +235,7 @@ def check_receipt_requests_async(
 
                     # Markiere aktuellen Status als berichtet NACH Verarbeitung
                     reported_receipts[page_id] = status
-                    save_reported_requests(reported_receipts)
+                    save_reported_receipts(reported_receipts)
 
                 else:
                     # Alte Einträge: Status hat sich nicht geändert
